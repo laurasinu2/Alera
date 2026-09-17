@@ -171,19 +171,22 @@ function render(){
   renderModal();
 }
 function renderAccessGate(){
-  return `<div class="access-gate"><div class="access-card">
-    <div class="access-logo">${icon('assets/icons/ui/alera-logo-mark.svg')}<span>Alera</span></div>
-    <div class="access-icon" aria-hidden="true"><span></span></div>
-    <h1>Acceso a Alera</h1>
-    <p>Introduce la contraseña de este dispositivo. Solo te la pediremos esta primera vez.</p>
-    <form id="access-form" novalidate>
-      <label class="sr-only" for="access-pin">Contraseña</label>
-      <input id="access-pin" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-describedby="access-error" placeholder="••••" />
-      <div id="access-error" class="access-error" role="alert"></div>
-      <button class="primary-btn access-submit" type="submit">Entrar</button>
-    </form>
-    <p class="access-note">Este dispositivo quedará recordado mientras no borres los datos del navegador o de la app.</p>
-  </div></div>`;
+  return `<div class="access-gate">
+    <img class="access-backdrop" src="assets/brand/splash-welcome.png" alt="" aria-hidden="true">
+    <div class="access-sheet">
+      <div class="access-sheet-handle" aria-hidden="true"></div>
+      <div class="access-sheet-brand"><img src="assets/brand/logo-mark.png" alt=""><span>Acceso local</span></div>
+      <h1>Introduce tu contraseña</h1>
+      <p>Solo se solicita la primera vez en este dispositivo.</p>
+      <form id="access-form" novalidate>
+        <label class="sr-only" for="access-pin">Contraseña</label>
+        <input id="access-pin" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-describedby="access-error" placeholder="••••" />
+        <div id="access-error" class="access-error" role="alert"></div>
+        <button class="primary-btn access-submit" type="submit">Entrar</button>
+      </form>
+      <p class="access-note">El dispositivo queda recordado mientras no borres los datos locales de Alera.</p>
+    </div>
+  </div>`;
 }
 function bindAccessGate(){
   const form=document.getElementById('access-form');
@@ -213,7 +216,7 @@ function bindAccessGate(){
 }
 function renderOnboarding(){
   return `<div class="onboarding"><div class="card onboard-card">
-    <div class="onboard-logo">${icon('assets/icons/ui/alera-logo-mark.svg')}<strong>Alera</strong></div>
+    <div class="onboard-logo"><img src="assets/brand/logo-horizontal.png" alt="Alera"></div>
     <h1>Tu inglés, organizado por semanas.</h1>
     <p>Todo se guarda únicamente en este dispositivo. No hay cuenta, correo ni inicio de sesión.</p>
     <form id="onboard-form">
@@ -247,7 +250,7 @@ function renderShell(){
 }
 function renderTopbar(){
   const p=store.profile;
-  return `<header class="topbar"><div class="brand">Alera</div>
+  return `<header class="topbar"><div class="brand"><img class="brand-logo" src="assets/brand/logo-horizontal.png" alt="Alera"></div>
     <button class="language-pill" onclick="openLanguageInfo()">${escapeHTML(p.language)} · ${escapeHTML(p.level)} ${icon('assets/icons/ui/chevron-down.svg')}</button>
     <button class="avatar" onclick="openProfile()">${p.photo?`<img src="${p.photo}" alt="Perfil">`:escapeHTML(initials(p.name))}</button></header>`;
 }
@@ -275,7 +278,7 @@ function renderWeek(){
   <div class="section-title"><h2>Tus temas de esta semana</h2><button class="link-btn" onclick="setView('knowledge')">Ver todos →</button></div>
   <div class="topic-grid-desktop">${['Grammar','Vocabulary','Pronunciation'].map(c=>grouped[c].length?renderWeekKnowledgeCard(c,grouped[c]):'').join('')}</div>
   ${renderWeekSkillCards(practice)}
-  <div class="quote-card">${icon('assets/icons/ui/alera-logo-mark.svg')}“Pequeños pasos, grandes cambios.”</div>
+  <div class="quote-card">${icon('assets/brand/logo-mark.png')}“Pequeños pasos, grandes cambios.”</div>
   ${week.reason?`<div class="week-reason"><strong>Por qué esta semana:</strong> ${escapeHTML(week.reason)}</div>`:''}`;
 }
 function renderWeekKnowledgeCard(category,items){
@@ -365,7 +368,7 @@ function renderProgress(){
   <div class="skill-summary">${skillStats.map(s=>`<div class="card summary-card"><strong>${s.avg?s.avg.toFixed(1):'—'}</strong><span>${skillNames[s.skill]} · ${s.count} sesiones</span></div>`).join('')}</div>
   <section class="card progress-card"><div class="progress-card-head"><h3>Habilidades</h3><span class="muted-small">Puntuación de sesiones · /10</span></div>${renderSkillsChart(days)}<div class="legend">${[['speaking','var(--coral)'],['writing','var(--petrol-soft)'],['reading','var(--lavender)'],['listening','var(--sage)']].map(([s,c])=>`<span><i style="background:${c}"></i>${skillNames[s]}</span>`).join('')}</div></section>
   <section class="card progress-card"><div class="progress-card-head"><div><h3>Retención de conocimiento</h3><div class="muted-small">Grammar, Vocabulary y Pronunciation aprendidos</div></div><div class="big-stat">${retAvg===null?'—':retAvg+'%'}</div></div>${renderRetentionChart(days)}</section>
-  <div class="quote-card">${icon('assets/icons/ui/alera-logo-mark.svg')}La práctica de hoy construye el idioma de mañana.</div>`;
+  <div class="quote-card">${icon('assets/brand/logo-mark.png')}La práctica de hoy construye el idioma de mañana.</div>`;
 }
 function chartPoints(daysCount, count=8){
   const end=startOfDay(new Date()); let start=daysCount>3650?new Date(Math.min(PLAN_START.getTime(),end.getTime())):addDays(end,-daysCount);
@@ -614,5 +617,7 @@ window.installApp=async()=>{if(!installPrompt)return;installPrompt.prompt();awai
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
 window.addEventListener('appinstalled',()=>{installPrompt=null;toast('Alera instalada');});
 if('serviceWorker' in navigator && location.protocol!=='file:') window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+const hideBootSplash=()=>{const splash=document.getElementById('boot-splash');if(!splash)return;setTimeout(()=>{splash.classList.add('is-hidden');setTimeout(()=>splash.remove(),320);},720);};
+if(document.readyState==='complete') hideBootSplash(); else window.addEventListener('load',hideBootSplash,{once:true});
 render();
 })();

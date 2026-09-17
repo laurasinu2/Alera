@@ -63,3 +63,13 @@ La interfaz usa una escala tipográfica más cercana a iOS, tarjetas y cabeceras
 - Tras introducirlo correctamente se guarda `alera_device_access_v1=granted` en `localStorage` y no vuelve a solicitarse en ese dispositivo.
 - Si se borran los datos del sitio/app o se usa otro navegador/dispositivo, la pantalla aparecerá de nuevo.
 - Es una barrera local de conveniencia, no autenticación criptográfica ni protección frente a alguien con acceso a los archivos/código de la PWA.
+
+
+## Branding oficial v6
+
+- Se han integrado los cuatro recursos de marca proporcionados: isotipo, logo horizontal y las dos pantallas verticales.
+- `splash-loading.png` aparece al arrancar la PWA.
+- `splash-welcome.png` sirve de fondo en el acceso PIN del primer dispositivo.
+- El logo horizontal se usa de forma compacta en la cabecera y onboarding.
+- El isotipo oficial genera los iconos PWA de 192/512 px y la variante maskable.
+- Cache del Service Worker: `alera-v6-official-brand`.

@@ -268,3 +268,38 @@
 .access-card .access-note{font-size:10.5px;line-height:1.35;margin:12px auto 0;color:#8999A6}
 @keyframes pin-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 @media(max-width:390px){.access-card{padding:20px 17px 18px;border-radius:24px}.access-gate{padding-left:14px;padding-right:14px}.access-card h1{font-size:21px}}
+
+
+/* v6 — official Alera branding supplied by the user */
+html,body{background:#F8FBFF}
+body{background:radial-gradient(circle at 90% 0%,rgba(92,177,255,.09),transparent 24%),radial-gradient(circle at 0% 22%,rgba(170,217,255,.10),transparent 26%),#F8FBFF}
+.brand{display:flex;align-items:center;margin-right:auto;min-width:86px;height:36px;overflow:visible}
+.brand-logo{display:block;width:104px;height:52px;object-fit:contain;object-position:left center;transform:translateX(-8px)}
+.topbar{overflow:visible}
+.quote-card img{width:24px;height:24px;object-fit:contain;opacity:.72}
+
+/* First-run access uses the supplied welcome artwork, then a compact iOS-style sheet. */
+.access-gate{position:relative;min-height:100vh;min-height:100dvh;display:flex;align-items:flex-end;justify-content:center;padding:0;background:#F8FBFF;overflow:hidden}
+.access-backdrop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;user-select:none;-webkit-user-drag:none}
+.access-sheet{position:relative;z-index:1;width:min(100%,430px);padding:9px 18px calc(18px + env(safe-area-inset-bottom));margin:0 10px 10px;border-radius:26px;background:rgba(255,255,255,.91);border:1px solid rgba(48,128,214,.12);box-shadow:0 18px 50px rgba(31,91,151,.14);backdrop-filter:blur(22px) saturate(1.08);-webkit-backdrop-filter:blur(22px) saturate(1.08);text-align:center}
+.access-sheet-handle{width:36px;height:4px;border-radius:99px;background:rgba(34,82,126,.16);margin:0 auto 10px}
+.access-sheet-brand{display:flex;align-items:center;justify-content:center;gap:6px;color:#446A90;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.access-sheet-brand img{width:25px;height:25px;object-fit:contain}
+.access-sheet h1{font-size:20px;line-height:1.15;letter-spacing:-.35px;margin:0 0 4px;color:#244D70}
+.access-sheet>p{margin:0 auto 12px;max-width:290px;color:#6D8295;font-size:12px;line-height:1.35}
+.access-sheet .pin-input{height:48px;border-color:rgba(43,126,205,.18);background:rgba(255,255,255,.96);color:#1C4F79}
+.access-sheet .pin-input:focus{border-color:rgba(43,126,205,.55);box-shadow:0 0 0 4px rgba(67,153,237,.10)}
+.access-sheet .access-note{margin:9px auto 0;font-size:10px;color:#8899A8;line-height:1.3}
+.access-sheet .access-error{height:18px;padding-top:4px}
+.access-sheet .access-submit{margin-top:1px;background:linear-gradient(90deg,#2F84D8,#1A65C8);box-shadow:0 7px 18px rgba(36,112,196,.16)}
+
+/* Onboarding uses the full horizontal official logo without oversizing it. */
+.onboarding{background:radial-gradient(circle at 50% 0%,rgba(139,205,255,.18),transparent 33%),#F8FBFF}
+.onboard-logo{height:54px;margin:0 auto 10px;display:flex;justify-content:center;align-items:center}
+.onboard-logo img{width:min(220px,68vw);height:72px;object-fit:contain}
+.onboard-card{background:rgba(255,255,255,.91);border-color:rgba(69,136,196,.12)}
+
+@media(max-width:390px){
+  .brand{min-width:76px;height:34px}.brand-logo{width:94px;height:46px;transform:translateX(-7px)}
+  .access-sheet{margin:0 8px 8px;padding-left:15px;padding-right:15px;border-radius:24px}
+}
