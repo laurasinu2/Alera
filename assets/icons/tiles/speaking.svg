@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+
+<defs>
+  <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#A9C2D4"/>
+    <stop offset="100%" stop-color="#4D7898"/>
+  </linearGradient>
+  <linearGradient id="gLav" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#C8C0D7"/>
+    <stop offset="100%" stop-color="#9A90B5"/>
+  </linearGradient>
+  <linearGradient id="gCoral" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#F1B3A2"/>
+    <stop offset="100%" stop-color="#E08A73"/>
+  </linearGradient>
+  <linearGradient id="gSage" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#D8E6EF"/>
+    <stop offset="100%" stop-color="#6F97B3"/>
+  </linearGradient>
+</defs>
+
+<rect x="28" y="28" width="136" height="136" rx="38" fill="url(#gBlue)"/><rect x="81" y="55" width="30" height="56" rx="15" fill="none" stroke="#FFFFFF" stroke-width="7"/><path d="M67 94 C67 118,78 129,96 129 C114 129,125 118,125 94" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="96" y1="129" x2="96" y2="144" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+</svg>
