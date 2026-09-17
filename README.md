@@ -59,7 +59,7 @@ La interfaz usa una escala tipográfica más cercana a iOS, tarjetas y cabeceras
 ## Acceso local v5
 
 - En el primer acceso de cada navegador/dispositivo se muestra una pantalla de contraseña.
-- PIN inicial configurado: `2917`.
+- PIN inicial configurado: `*******`.
 - Tras introducirlo correctamente se guarda `alera_device_access_v1=granted` en `localStorage` y no vuelve a solicitarse en ese dispositivo.
 - Si se borran los datos del sitio/app o se usa otro navegador/dispositivo, la pantalla aparecerá de nuevo.
 - Es una barrera local de conveniencia, no autenticación criptográfica ni protección frente a alguien con acceso a los archivos/código de la PWA.
