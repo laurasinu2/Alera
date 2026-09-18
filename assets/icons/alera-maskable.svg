@@ -7,8 +7,8 @@
     <stop offset="100%" stop-color="#E9F1F6"/>
   </linearGradient>
   <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#A9C2D4"/>
-    <stop offset="100%" stop-color="#315A78"/>
+    <stop offset="0%" stop-color="#8CCBFF"/>
+    <stop offset="100%" stop-color="#0B4CAA"/>
   </linearGradient>
 </defs>
 
@@ -16,7 +16,7 @@
 <rect width="192" height="192" fill="url(#appBg)"/>
 <circle cx="96" cy="96" r="58" fill="#FFFFFF" opacity=".42"/>
 <path d="M60 132 C57 91,81 57,139 51 C137 103,108 136,67 138 Z" fill="url(#leafGrad)"/>
-<path d="M69 133 C85 110,103 88,128 67" fill="none" stroke="#FBFBFC" stroke-width="10" stroke-linecap="round"/>
-<path d="M76 101 C68 86,65 72,67 59" fill="none" stroke="#FBFBFC" stroke-width="8" stroke-linecap="round"/>
+<path d="M69 133 C85 110,103 88,128 67" fill="none" stroke="#F8FBFF" stroke-width="10" stroke-linecap="round"/>
+<path d="M76 101 C68 86,65 72,67 59" fill="none" stroke="#F8FBFF" stroke-width="8" stroke-linecap="round"/>
 
 </svg>

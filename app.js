@@ -400,11 +400,11 @@ function renderRetentionChart(days){
 }
 function svgLineChart(series,min,max,fmt,kind){
   const width=640,height=190,padL=34,padR=12,padT=14,padB=30,plotW=width-padL-padR,plotH=height-padT-padB;
-  const colors={speaking:'#E08A73',writing:'#A9C2D4',reading:'#9A90B5',listening:'#6F97B3',retention:'#9A90B5'};
+  const colors={speaking:'#3296F3',writing:'#2F84D8',reading:'#1A65C8',listening:'#55B4F6',retention:'#1768C5'};
   const all=Object.values(series)[0]||[]; const n=Math.max(2,all.length); const x=i=>padL+(i/(n-1))*plotW, y=v=>padT+(max-v)/(max-min)*plotH;
   const grids=[0,.25,.5,.75,1].map(t=>{const yy=padT+plotH*(1-t);return `<line x1="${padL}" y1="${yy}" x2="${width-padR}" y2="${yy}"/><text x="2" y="${yy+4}">${fmt(min+(max-min)*t)}</text>`}).join('');
   const paths=Object.entries(series).map(([name,arr])=>{
-    let d='',started=false; arr.forEach((p,i)=>{if(p.v==null)return; d+=`${started?' L':'M'} ${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`;started=true;}); return d?`<path class="chart-line" d="${d}" stroke="${colors[name]||'#4D7898'}"/>`:'';
+    let d='',started=false; arr.forEach((p,i)=>{if(p.v==null)return; d+=`${started?' L':'M'} ${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`;started=true;}); return d?`<path class="chart-line" d="${d}" stroke="${colors[name]||'#2F84D8'}"/>`:'';
   }).join('');
   const labels=all.map((p,i)=>(i===0||i===all.length-1||i===Math.floor((all.length-1)/2))?`<text x="${x(i)}" y="${height-7}" text-anchor="middle">${formatDate(p.d,{day:'numeric',month:'short'})}</text>`:'').join('');
   return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfica de ${kind}"><g class="chart-grid">${grids}</g><g class="chart-axis">${labels}</g>${paths}</svg>`;

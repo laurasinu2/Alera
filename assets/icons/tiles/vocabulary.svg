@@ -2,20 +2,20 @@
 
 <defs>
   <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#A9C2D4"/>
-    <stop offset="100%" stop-color="#4D7898"/>
+    <stop offset="0%" stop-color="#8CCBFF"/>
+    <stop offset="100%" stop-color="#2F84D8"/>
   </linearGradient>
   <linearGradient id="gLav" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#C8C0D7"/>
-    <stop offset="100%" stop-color="#9A90B5"/>
+    <stop offset="0%" stop-color="#B8DFFF"/>
+    <stop offset="100%" stop-color="#1A65C8"/>
   </linearGradient>
   <linearGradient id="gCoral" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#F1B3A2"/>
-    <stop offset="100%" stop-color="#E08A73"/>
+    <stop offset="0%" stop-color="#A9DBFF"/>
+    <stop offset="100%" stop-color="#3296F3"/>
   </linearGradient>
   <linearGradient id="gSage" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#D8E6EF"/>
-    <stop offset="100%" stop-color="#6F97B3"/>
+    <stop offset="0%" stop-color="#DDF1FF"/>
+    <stop offset="100%" stop-color="#55B4F6"/>
   </linearGradient>
 </defs>
 

@@ -1,4 +1,4 @@
-const CACHE = 'alera-v6-official-brand';
+const CACHE = 'alera-v7-logo-blue';
 const CORE = [
   "./README.md",
   "./app.js",

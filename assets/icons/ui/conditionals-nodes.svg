@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
 
 
-<line x1="96" y1="58" x2="96" y2="86" stroke="#4D7898" stroke-width="7" stroke-linecap="round"/><line x1="96" y1="86" x2="67" y2="112" stroke="#4D7898" stroke-width="7" stroke-linecap="round"/><line x1="96" y1="86" x2="125" y2="112" stroke="#4D7898" stroke-width="7" stroke-linecap="round"/><circle cx="96" cy="51" r="10" fill="none" stroke="#4D7898" stroke-width="6"/><circle cx="62" cy="120" r="10" fill="none" stroke="#4D7898" stroke-width="6"/><circle cx="130" cy="120" r="10" fill="none" stroke="#4D7898" stroke-width="6"/>
+<line x1="96" y1="58" x2="96" y2="86" stroke="#2F84D8" stroke-width="7" stroke-linecap="round"/><line x1="96" y1="86" x2="67" y2="112" stroke="#2F84D8" stroke-width="7" stroke-linecap="round"/><line x1="96" y1="86" x2="125" y2="112" stroke="#2F84D8" stroke-width="7" stroke-linecap="round"/><circle cx="96" cy="51" r="10" fill="none" stroke="#2F84D8" stroke-width="6"/><circle cx="62" cy="120" r="10" fill="none" stroke="#2F84D8" stroke-width="6"/><circle cx="130" cy="120" r="10" fill="none" stroke="#2F84D8" stroke-width="6"/>
 </svg>
