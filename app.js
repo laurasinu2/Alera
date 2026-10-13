@@ -5,7 +5,7 @@ const SEED = window.ALERA_SEED;
 const STORE_KEY = 'alera_pwa_v1';
 const DEVICE_ACCESS_KEY = 'alera_device_access_v1';
 const FIRST_ACCESS_PIN = '2917';
-const PLAN_START = new Date(2026, 8, 21, 0, 0, 0, 0);
+const DEFAULT_PLAN_START = '2026-10-12';
 const REVIEW_OFFSETS = [7, 14, 28, 42, 70, 112, 168]; // siempre desde learnedAt
 const DAY = 86400000;
 const skillNames = {speaking:'Speaking', writing:'Writing', reading:'Reading', listening:'Listening', pronunciation:'Pronunciation'};
@@ -29,6 +29,7 @@ const navIcon = {
 const knowledgeById = Object.fromEntries(SEED.knowledge.map(k => [k.id, k]));
 let installPrompt = null;
 let store = loadStore();
+syncPlanWeek();
 let ui = {
   view:'week',
   week: currentPlanWeek(),
@@ -41,7 +42,7 @@ let ui = {
 };
 
 function freshStore(){
-  return {version:1, profile:null, knowledge:{}, sessions:[], reviewEvents:[], reinforcements:[], createdAt:isoNow()};
+  return {version:1, profile:null, knowledge:{}, sessions:[], reviewEvents:[], reinforcements:[], plan:null, createdAt:isoNow()};
 }
 function loadStore(){
   try {
@@ -65,9 +66,38 @@ function endOfWeek(d=new Date()){ const x=startOfWeek(d); x.setDate(x.getDate()+
 function formatDate(d, opts={day:'numeric',month:'short'}){ return new Intl.DateTimeFormat('es-ES',opts).format(d); }
 function formatDateLong(d){ return new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'short',year:'numeric'}).format(d); }
 function daysBetween(a,b){ return Math.floor((startOfDay(b)-startOfDay(a))/DAY); }
-function currentPlanWeek(){ return clamp(Math.floor((startOfDay(new Date())-PLAN_START)/(7*DAY))+1,1,19); }
-function getWeekDates(n){ const s=addDays(PLAN_START,(n-1)*7), e=addDays(s,6); return {start:s,end:e}; }
-function weekForDate(d){ return clamp(Math.floor((startOfDay(d)-PLAN_START)/(7*DAY))+1,1,19); }
+function localDateKey(d){ return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); }
+function fromDateKey(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function planStart(){ return fromDateKey(store.plan?.start || DEFAULT_PLAN_START); }
+function currentPlanWeek(){ return store.plan?.week || 1; }
+function calendarWeekNumber(d){ return Math.max(0,Math.round((startOfWeek(d)-planStart())/(7*DAY))); }
+function getWeekDates(n){
+  const start=addDays(startOfWeek(new Date()),(n-currentPlanWeek())*7);
+  return {start,end:addDays(start,6)};
+}
+function weekForDate(d){ return currentPlanWeek(); }
+function syncPlanWeek(){
+  if(!store.plan){
+    store.plan={start:store.profile?localDateKey(startOfWeek(new Date())):DEFAULT_PLAN_START,week:1,processed:0};
+    saveStore();
+  }
+  const elapsed=calendarWeekNumber(new Date());
+  let changed=false;
+  while(store.plan.processed<elapsed){
+    const start=addDays(planStart(),store.plan.processed*7);
+    const end=addDays(start,7);
+    const active=store.plan.week;
+    const completed=SEED.knowledge.some(k=>{
+      if(k.week!==active)return false;
+      const date=parseISO(store.knowledge?.[k.id]?.learnedAt);
+      return date && date>=start && date<end;
+    });
+    if(completed && active<19)store.plan.week++;
+    store.plan.processed++;
+    changed=true;
+  }
+  if(changed)saveStore();
+}
 function initials(name='A'){ return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase() || 'A'; }
 function prettyAgo(date){
   const n=daysBetween(date,new Date()); if(n<=0)return 'hoy'; if(n===1)return 'ayer'; if(n<7)return `hace ${n} días`; const w=Math.floor(n/7); if(w===1)return 'hace 1 semana'; if(w<5)return `hace ${w} semanas`; const m=Math.floor(n/30); return m<=1?'hace 1 mes':`hace ${m} meses`;
@@ -164,6 +194,7 @@ function ensureReinforcement(id, reason, dueDate=new Date()){
 function hasDeviceAccess(){ return localStorage.getItem(DEVICE_ACCESS_KEY)==='granted'; }
 function grantDeviceAccess(){ localStorage.setItem(DEVICE_ACCESS_KEY,'granted'); }
 function render(){
+  syncPlanWeek();
   const root=document.getElementById('app');
   if(!hasDeviceAccess()){ root.innerHTML=renderAccessGate(); bindAccessGate(); return; }
   if(!store.profile){ root.innerHTML=renderOnboarding(); bindOnboarding(); return; }
@@ -242,7 +273,7 @@ function bindOnboarding(){
   document.getElementById('onboard-name')?.addEventListener('input',e=>{if(!photo)document.getElementById('onboard-photo-preview').textContent=initials(e.target.value||'A');});
   document.getElementById('onboard-form')?.addEventListener('submit',e=>{
     e.preventDefault(); const name=document.getElementById('onboard-name').value.trim(); if(!name)return;
-    store.profile={name,photo,language:'English',level:document.getElementById('onboard-level').value,createdAt:isoNow()}; saveStore(); render(); toast('Perfil local creado');
+    store.profile={name,photo,language:'English',level:document.getElementById('onboard-level').value,createdAt:isoNow()}; store.plan={start:localDateKey(startOfWeek(new Date())),week:1,processed:0}; ui.week=1; saveStore(); render(); toast('Perfil local creado');
   });
 }
 function renderShell(){
@@ -270,10 +301,13 @@ function pageHead(title,subtitle){ return `<div class="page-head"><h1>${title}</
 function renderWeek(){
   const week=SEED.weeks.find(w=>w.number===ui.week), items=plannedItems(ui.week), practice=plannedPractice(ui.week);
   const total=items.length+practice.length, doneK=items.filter(k=>isLearned(k.id)).length, doneP=practice.filter(p=>sessionsForWeek(ui.week,p.skill).length).length, done=doneK+doneP, pct=total?Math.round(done/total*100):0;
-  const today=new Date(); const dates=getWeekDates(ui.week); const before=today<PLAN_START && ui.week===1;
+  const today=new Date(); const dates=getWeekDates(ui.week); const before=today<planStart() && ui.week===1;
+  const dateLabel=formatDate(dates.start)+'–'+formatDate(dates.end);
+  const active=ui.week===currentPlanWeek();
   const grouped={Grammar:items.filter(i=>i.category==='Grammar'),Vocabulary:items.filter(i=>i.category==='Vocabulary'),Pronunciation:items.filter(i=>i.category==='Pronunciation')};
   return `${pageHead(`Buenos días, ${escapeHTML(store.profile.name.split(' ')[0])}`,before?'Tu plan empieza el lunes. Puedes explorarlo desde ahora.':'Esto es lo importante de esta semana.')}
-  <div class="week-switch"><button onclick="setWeek(${ui.week-1})" ${ui.week<=1?'disabled':''}>‹</button><div class="week-label"><strong>Semana ${ui.week}</strong><span>${escapeHTML(week.dateLabel)}</span></div><button onclick="setWeek(${ui.week+1})" ${ui.week>=19?'disabled':''}>›</button></div>
+  <div class="week-switch"><button onclick="setWeek(${ui.week-1})" ${ui.week<=1?'disabled':''}>‹</button><div class="week-label"><strong>Semana ${ui.week}</strong><span>${escapeHTML(dateLabel)}</span></div><button onclick="setWeek(${ui.week+1})" ${ui.week>=19?'disabled':''}>›</button></div>
+  ${active?'<p class="fineprint">Si no marcas ningún tema como aprendido esta semana, se repetirá automáticamente la siguiente.</p>':''}
   <section class="hero-card"><div class="hero-row"><div><div class="hero-title">Semana ${ui.week} · ${escapeHTML(week.dateLabel)}</div><div class="hero-stats"><div class="hero-stat"><span class="dot-icon">◉</span>${total} objetivos en total</div><div class="hero-stat"><span class="dot-icon">✓</span>${done} completados</div><div class="hero-stat"><span class="dot-icon"></span>${total-done} pendientes</div></div></div><div><div class="ring" style="--p:${pct}"><span>${pct}%</span></div><div class="hero-note">Avanza a tu ritmo durante la semana.</div></div></div></section>
   <div class="section-title"><h2>Tus temas de esta semana</h2><button class="link-btn" onclick="setView('knowledge')">Ver todos →</button></div>
   <div class="topic-grid-desktop">${['Grammar','Vocabulary','Pronunciation'].map(c=>grouped[c].length?renderWeekKnowledgeCard(c,grouped[c]):'').join('')}</div>
@@ -570,15 +604,15 @@ function renderProfileModal(){
     </div><p class="fineprint" style="margin-top:14px;text-align:left">Alera usa localStorage. Si borras los datos del navegador sin exportar una copia, el progreso no se puede recuperar.</p>
   </div>`);
 }
-function renderLanguageModal(){ return modalWrap(`${modalHead('English · '+escapeHTML(store.profile.level),'Perfil de idioma actual')}<section class="card" style="padding:16px"><p style="margin-top:0">Esta versión está configurada únicamente para <strong>English</strong>. La estructura interna ya separa el perfil de idioma para poder añadir otros más adelante.</p><p class="fineprint">Plan actual: B2 · 21/09/2026–31/01/2027 · 19 semanas.</p></section>`); }
+function renderLanguageModal(){ const start=planStart(), finish=addDays(start,18*7+6+Math.max(0,calendarWeekNumber(new Date())-(currentPlanWeek()-1))*7); return modalWrap(`${modalHead('English · '+escapeHTML(store.profile.level),'Perfil de idioma actual')}<section class="card" style="padding:16px"><p>Esta versión está configurada únicamente para <strong>English</strong>.</p><p class="fineprint">Plan B2 · 19 semanas de contenido. Inicio: ${formatDateLong(start)}. Final estimado: ${formatDateLong(finish)}. Las semanas inactivas prorrogan el plan.</p></section>`); }
 function bindModalSpecials(){
   const pInput=document.getElementById('profile-photo-input'); if(pInput&&!pInput.dataset.bound){pInput.dataset.bound='1';pInput.addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{pInput.dataset.photo=r.result;document.getElementById('profile-preview').innerHTML=`<img src="${r.result}" alt="Foto de perfil">`;};r.readAsDataURL(f);});}
   const imp=document.getElementById('import-data'); if(imp&&!imp.dataset.bound){imp.dataset.bound='1';imp.addEventListener('change',importDataFile);}
 }
 function saveProfile(){ const name=document.getElementById('profile-name').value.trim();if(!name)return;const input=document.getElementById('profile-photo-input');store.profile.name=name;if(input?.dataset.photo)store.profile.photo=input.dataset.photo;saveStore();closeModal();render();toast('Perfil guardado'); }
 function exportData(){ const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`alera-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-function importDataFile(e){ const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(!data.profile||!Array.isArray(data.sessions))throw new Error('Formato no válido');store={...freshStore(),...data};saveStore();ui.modal=null;render();toast('Copia importada');}catch(err){alert('No se ha podido importar esta copia.');}};r.readAsText(f); }
-function resetAlera(){ if(!confirm('¿Borrar perfil, progreso, sesiones y revisiones de este dispositivo?'))return;localStorage.removeItem(STORE_KEY);store=freshStore();ui.modal=null;render(); }
+function importDataFile(e){ const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(!data.profile||!Array.isArray(data.sessions))throw new Error('Formato no válido');store={...freshStore(),...data};syncPlanWeek();saveStore();ui.week=currentPlanWeek();ui.modal=null;render();toast('Copia importada');}catch(err){alert('No se ha podido importar esta copia.');}};r.readAsText(f); }
+function resetAlera(){ if(!confirm('¿Borrar perfil, progreso, sesiones y revisiones de este dispositivo?'))return;localStorage.removeItem(STORE_KEY);store=freshStore();ui.week=1;ui.modal=null;render(); }
 
 function toast(msg){ const root=document.getElementById('toast-root');root.innerHTML=`<div class="toast">${escapeHTML(msg)}</div>`;setTimeout(()=>{root.innerHTML='';},2800); }
 
