@@ -86,3 +86,11 @@ La interfaz usa ahora el azul del botón de acceso (#2F84D8 → #1A65C8) y una g
 - Si no se marcó ningún elemento, el temario activo se repite la semana siguiente y se amplía la fecha estimada de finalización.
 - Las sesiones de Practice no cuentan como marcar Knowledge aprendido. Las revisiones mantienen las fechas relativas a `learnedAt`.
 - El progreso de calendario se conserva en `localStorage`, en `store.plan` (inicio, bloque activo y semana procesada).
+
+## Ajustes de fechas y visualización móvil (v9)
+
+- El encabezado y la tarjeta azul de la semana se generan a partir del mismo rango de fechas dinámico, incluido el caso de una semana repetida.
+- La pantalla de carga y el fondo de acceso se ajustan sin recortar las ilustraciones.
+- La vista móvil utiliza `width=device-width`, tamaño de escala inicial 1 y restricciones de zoom solicitadas. Los inputs de texto mantienen al menos 16 px para evitar el zoom automático de iOS al enfocarlos. Se ha retirado el enfoque automático del PIN al abrir la app.
+- Nota de accesibilidad: desactivar el zoom gestual puede dificultar la lectura para quienes necesiten ampliar el contenido; algunos navegadores pueden ignorar la restricción.
+- El gráfico de progreso «Todo» vuelve a emplear el inicio dinámico del plan.
