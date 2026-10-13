@@ -94,3 +94,11 @@ La interfaz usa ahora el azul del botón de acceso (#2F84D8 → #1A65C8) y una g
 - La vista móvil utiliza `width=device-width`, tamaño de escala inicial 1 y restricciones de zoom solicitadas. Los inputs de texto mantienen al menos 16 px para evitar el zoom automático de iOS al enfocarlos. Se ha retirado el enfoque automático del PIN al abrir la app.
 - Nota de accesibilidad: desactivar el zoom gestual puede dificultar la lectura para quienes necesiten ampliar el contenido; algunos navegadores pueden ignorar la restricción.
 - El gráfico de progreso «Todo» vuelve a emplear el inicio dinámico del plan.
+
+## Recarga desde la PWA (v10)
+
+- En **Perfil local > Datos**, el botón **Actualizar y recargar Alera** solicita al navegador que busque una versión nueva del Service Worker y recarga la app instalada, sin desinstalarla.
+- El botón no borra `localStorage`, el perfil, los registros de práctica ni el progreso.
+- La caché de los archivos principales (`index.html`, `app.js`, `data.js`, `styles.css` y manifest) utiliza **network-first** con respaldo local para que una recarga conectada obtenga la versión más reciente y el acceso offline siga funcionando.
+- El Service Worker elimina solo cachés antiguas de Alera; no borra el almacenamiento local.
+- Con conexión ausente, recarga la versión offline disponible. La primera vez que llega esta funcionalidad a una instalación anterior puede ser necesario cerrar y volver a abrir Alera para que se active el Service Worker nuevo.
