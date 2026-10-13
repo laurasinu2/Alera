@@ -1,4 +1,4 @@
-const CACHE = 'alera-v8-flexible-plan';
+const CACHE = 'alera-v9-week-dates-mobile-fit';
 const CORE = [
   "./README.md",
   "./app.js",
