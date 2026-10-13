@@ -373,3 +373,16 @@ body{
 .access-sheet .access-submit{background:linear-gradient(90deg,#2F84D8,#1A65C8);box-shadow:0 7px 18px rgba(26,101,200,.18)}
 .chart-grid line{stroke:rgba(47,132,216,.12)}
 .progress-card,.review-card,.topic-card,.week-skill-card,.knowledge-row{border-color:rgba(47,132,216,.11)}
+
+/* v8: fixed mobile viewport, safe-area sizing and no input-focus auto-zoom. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+button,a,input,select,textarea{touch-action:manipulation}
+input:not([type="range"]),select,textarea,
+.field input,.field select,.field textarea,.searchbox input{font-size:16px}
+.pin-input{font-size:24px}
+.hero-row{min-width:0}
+.hero-row>div:first-child{min-width:0;flex:1}
+.hero-row>div:last-child{flex:0 0 auto}
+.hero-title{overflow-wrap:anywhere}
+.access-backdrop{object-fit:contain;background:#F8FBFF}
