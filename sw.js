@@ -1,4 +1,4 @@
-const CACHE = 'alera-v9-week-dates-mobile-fit';
+const CACHE = 'alera-v10-in-app-update';
 const CORE = [
   "./README.md",
   "./app.js",
@@ -57,16 +57,37 @@ const CORE = [
   "./manifest.webmanifest",
   "./styles.css"
 ];
+
+// Reload the app shell from the network when available; keep offline fallback.
+const APP_SHELL = new Set(['index.html','app.js','data.js','styles.css','manifest.webmanifest']);
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(k => k.startsWith('alera-') && k !== CACHE).map(k => caches.delete(k))
+  )).then(() => self.clients.claim()));
+});
+self.addEventListener('message', e => {
+  if(e.data?.type === 'SKIP_WAITING')self.skipWaiting();
 });
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-    if (res && res.status === 200) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
+  if(e.request.method !== 'GET')return;
+  const url = new URL(e.request.url);
+  if(url.origin !== self.location.origin)return;
+  const isShell = e.request.mode === 'navigate' || APP_SHELL.has(url.pathname.split('/').pop());
+  const fetchAndRemember = () => fetch(e.request, {cache:'no-store'}).then(res => {
+    if(res.ok){
+      const copy=res.clone();
+      e.waitUntil(caches.open(CACHE).then(c => c.put(e.request,copy)));
+    }
     return res;
-  }).catch(() => e.request.mode === 'navigate' ? caches.match('./index.html') : Response.error())));
+  });
+  const offline = async () =>
+    await caches.match(e.request) ||
+    (e.request.mode === 'navigate' ? await caches.match('./index.html') : null) ||
+    Response.error();
+  e.respondWith(isShell
+    ? fetchAndRemember().catch(offline)
+    : caches.match(e.request).then(hit => hit || fetchAndRemember().catch(offline)));
 });
