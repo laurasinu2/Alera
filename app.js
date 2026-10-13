@@ -605,10 +605,11 @@ function renderProfileModal(){
     <button class="primary-btn" onclick="saveProfile()">Guardar perfil</button>
     <div class="section-title"><h2>Datos</h2></div><div class="settings-list">
       ${installPrompt?`<button class="settings-action" onclick="installApp()"><span>Instalar Alera como app</span><span>＋</span></button>`:''}
+      <button class="settings-action" id="refresh-alera-btn" onclick="refreshAlera()"><span>Actualizar y recargar Alera</span><span>↻</span></button>
       <button class="settings-action" onclick="exportData()"><span>Exportar copia de seguridad</span><span>↓</span></button>
       <button class="settings-action" onclick="document.getElementById('import-data').click()"><span>Importar copia de seguridad</span><span>↑</span></button><input id="import-data" type="file" accept="application/json" style="display:none">
       <button class="settings-action danger" onclick="resetAlera()"><span>Borrar todos los datos locales</span><span>×</span></button>
-    </div><p class="fineprint" style="margin-top:14px;text-align:left">Alera usa localStorage. Si borras los datos del navegador sin exportar una copia, el progreso no se puede recuperar.</p>
+    </div><p class="fineprint" style="margin-top:14px;text-align:left">Actualizar comprueba si hay una nueva versión y recarga sin borrar tus datos. Alera guarda tu progreso en este dispositivo; exporta una copia antes de borrar datos o desinstalarla.</p>
   </div>`);
 }
 function renderLanguageModal(){ const start=planStart(), finish=addDays(start,18*7+6+Math.max(0,calendarWeekNumber(new Date())-(currentPlanWeek()-1))*7); return modalWrap(`${modalHead('English · '+escapeHTML(store.profile.level),'Perfil de idioma actual')}<section class="card" style="padding:16px"><p>Esta versión está configurada únicamente para <strong>English</strong>.</p><p class="fineprint">Plan B2 · 19 semanas de contenido. Inicio: ${formatDateLong(start)}. Final estimado: ${formatDateLong(finish)}. Las semanas inactivas prorrogan el plan.</p></section>`); }
@@ -619,6 +620,31 @@ function bindModalSpecials(){
 function saveProfile(){ const name=document.getElementById('profile-name').value.trim();if(!name)return;const input=document.getElementById('profile-photo-input');store.profile.name=name;if(input?.dataset.photo)store.profile.photo=input.dataset.photo;saveStore();closeModal();render();toast('Perfil guardado'); }
 function exportData(){ const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`alera-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 function importDataFile(e){ const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(!data.profile||!Array.isArray(data.sessions))throw new Error('Formato no válido');store={...freshStore(),...data};syncPlanWeek();saveStore();ui.week=currentPlanWeek();ui.modal=null;render();toast('Copia importada');}catch(err){alert('No se ha podido importar esta copia.');}};r.readAsText(f); }
+// Updates the installed PWA without touching localStorage or uninstalling it.
+async function refreshAlera(){
+  const button=document.getElementById('refresh-alera-btn');
+  if(button?.disabled)return;
+  if(button){button.disabled=true;button.querySelector('span').textContent='Buscando actualizaciones…';}
+  saveStore();
+  try {
+    if('serviceWorker' in navigator && location.protocol!=='file:' && navigator.onLine!==false){
+      const registration=await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js');
+      // Attach the listener before update(): activation can finish very quickly.
+      const activated=new Promise(resolve=>{
+        navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true});
+      });
+      await registration.update();
+      if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+      // Don't reload with the old worker while a new one is still installing.
+      if(registration.installing || registration.waiting){
+        await Promise.race([activated,new Promise(resolve=>setTimeout(resolve,12000))]);
+      }
+    }
+  } catch(err){
+    // Even without connectivity the existing offline version can be reloaded safely.
+  }
+  location.reload();
+}
 function resetAlera(){ if(!confirm('¿Borrar perfil, progreso, sesiones y revisiones de este dispositivo?'))return;localStorage.removeItem(STORE_KEY);store=freshStore();ui.week=1;ui.modal=null;render(); }
 
 function toast(msg){ const root=document.getElementById('toast-root');root.innerHTML=`<div class="toast">${escapeHTML(msg)}</div>`;setTimeout(()=>{root.innerHTML='';},2800); }
@@ -652,6 +678,7 @@ window.markKnowledge=(id,keepModal=false)=>{
   render();
   toast(`${knowledgeById[id].name} · empieza su curva de revisión`);
 };
+window.refreshAlera=refreshAlera;
 window.toggleReadingMode=toggleReadingMode;window.toggleDifficulty=toggleDifficulty;window.practiceNext=practiceNext;window.practiceBack=practiceBack;window.savePractice=savePractice;window.setSeverity=setSeverity;window.completeReview=completeReview;window.saveProfile=saveProfile;window.exportData=exportData;window.resetAlera=resetAlera;
 window.installApp=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;ui.modal=null;render();};
 
