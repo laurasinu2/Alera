@@ -77,3 +77,12 @@ La interfaz usa una escala tipográfica más cercana a iOS, tarjetas y cabeceras
 
 ## v7 — paleta oficial azul
 La interfaz usa ahora el azul del botón de acceso (#2F84D8 → #1A65C8) y una gama derivada del logo oficial de Alera (azules claros, cian y azul profundo). Las tarjetas permanecen blancas/azuladas para conservar legibilidad.
+
+
+## Calendario flexible (octubre 2026)
+
+- El primer bloque empieza la semana del 12/10/2026. Para perfiles nuevos el inicio se fija al lunes de la semana en la que crean su perfil.
+- Al terminar cada semana natural, el plan avanza un bloque solo si durante esa semana se marcó como aprendido al menos un elemento de Knowledge del bloque activo.
+- Si no se marcó ningún elemento, el temario activo se repite la semana siguiente y se amplía la fecha estimada de finalización.
+- Las sesiones de Practice no cuentan como marcar Knowledge aprendido. Las revisiones mantienen las fechas relativas a `learnedAt`.
+- El progreso de calendario se conserva en `localStorage`, en `store.plan` (inicio, bloque activo y semana procesada).
