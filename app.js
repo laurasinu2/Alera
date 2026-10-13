@@ -65,6 +65,11 @@ function startOfWeek(d=new Date()){
 function endOfWeek(d=new Date()){ const x=startOfWeek(d); x.setDate(x.getDate()+6); x.setHours(23,59,59,999); return x; }
 function formatDate(d, opts={day:'numeric',month:'short'}){ return new Intl.DateTimeFormat('es-ES',opts).format(d); }
 function formatDateLong(d){ return new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'short',year:'numeric'}).format(d); }
+function formatWeekRange(start,end){
+  const month=d=>new Intl.DateTimeFormat('es-ES',{month:'long'}).format(d);
+  if(start.getFullYear()===end.getFullYear() && start.getMonth()===end.getMonth())return `${start.getDate()}–${end.getDate()} ${month(end)}`;
+  return `${start.getDate()} ${month(start)}–${end.getDate()} ${month(end)}`;
+}
 function daysBetween(a,b){ return Math.floor((startOfDay(b)-startOfDay(a))/DAY); }
 function localDateKey(d){ return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); }
 function fromDateKey(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
@@ -194,7 +199,9 @@ function ensureReinforcement(id, reason, dueDate=new Date()){
 function hasDeviceAccess(){ return localStorage.getItem(DEVICE_ACCESS_KEY)==='granted'; }
 function grantDeviceAccess(){ localStorage.setItem(DEVICE_ACCESS_KEY,'granted'); }
 function render(){
+  const previouslyActive=currentPlanWeek();
   syncPlanWeek();
+  if(ui.week===previouslyActive && currentPlanWeek()!==previouslyActive)ui.week=currentPlanWeek();
   const root=document.getElementById('app');
   if(!hasDeviceAccess()){ root.innerHTML=renderAccessGate(); bindAccessGate(); return; }
   if(!store.profile){ root.innerHTML=renderOnboarding(); bindOnboarding(); return; }
@@ -243,7 +250,7 @@ function bindAccessGate(){
     if(input.value.length===4) submit();
   });
   form?.addEventListener('submit',e=>{e.preventDefault(); submit();});
-  setTimeout(()=>input?.focus(),80);
+  // Do not auto-focus on first launch: iOS can zoom or scroll the viewport to the keyboard.
 }
 function renderOnboarding(){
   return `<div class="onboarding"><div class="card onboard-card">
@@ -302,13 +309,13 @@ function renderWeek(){
   const week=SEED.weeks.find(w=>w.number===ui.week), items=plannedItems(ui.week), practice=plannedPractice(ui.week);
   const total=items.length+practice.length, doneK=items.filter(k=>isLearned(k.id)).length, doneP=practice.filter(p=>sessionsForWeek(ui.week,p.skill).length).length, done=doneK+doneP, pct=total?Math.round(done/total*100):0;
   const today=new Date(); const dates=getWeekDates(ui.week); const before=today<planStart() && ui.week===1;
-  const dateLabel=formatDate(dates.start)+'–'+formatDate(dates.end);
+  const dateLabel=formatWeekRange(dates.start,dates.end);
   const active=ui.week===currentPlanWeek();
   const grouped={Grammar:items.filter(i=>i.category==='Grammar'),Vocabulary:items.filter(i=>i.category==='Vocabulary'),Pronunciation:items.filter(i=>i.category==='Pronunciation')};
   return `${pageHead(`Buenos días, ${escapeHTML(store.profile.name.split(' ')[0])}`,before?'Tu plan empieza el lunes. Puedes explorarlo desde ahora.':'Esto es lo importante de esta semana.')}
   <div class="week-switch"><button onclick="setWeek(${ui.week-1})" ${ui.week<=1?'disabled':''}>‹</button><div class="week-label"><strong>Semana ${ui.week}</strong><span>${escapeHTML(dateLabel)}</span></div><button onclick="setWeek(${ui.week+1})" ${ui.week>=19?'disabled':''}>›</button></div>
   ${active?'<p class="fineprint">Si no marcas ningún tema como aprendido esta semana, se repetirá automáticamente la siguiente.</p>':''}
-  <section class="hero-card"><div class="hero-row"><div><div class="hero-title">Semana ${ui.week} · ${escapeHTML(week.dateLabel)}</div><div class="hero-stats"><div class="hero-stat"><span class="dot-icon">◉</span>${total} objetivos en total</div><div class="hero-stat"><span class="dot-icon">✓</span>${done} completados</div><div class="hero-stat"><span class="dot-icon"></span>${total-done} pendientes</div></div></div><div><div class="ring" style="--p:${pct}"><span>${pct}%</span></div><div class="hero-note">Avanza a tu ritmo durante la semana.</div></div></div></section>
+  <section class="hero-card"><div class="hero-row"><div><div class="hero-title">Semana ${ui.week} · ${escapeHTML(dateLabel)}</div><div class="hero-stats"><div class="hero-stat"><span class="dot-icon">◉</span>${total} objetivos en total</div><div class="hero-stat"><span class="dot-icon">✓</span>${done} completados</div><div class="hero-stat"><span class="dot-icon"></span>${total-done} pendientes</div></div></div><div><div class="ring" style="--p:${pct}"><span>${pct}%</span></div><div class="hero-note">Avanza a tu ritmo durante la semana.</div></div></div></section>
   <div class="section-title"><h2>Tus temas de esta semana</h2><button class="link-btn" onclick="setView('knowledge')">Ver todos →</button></div>
   <div class="topic-grid-desktop">${['Grammar','Vocabulary','Pronunciation'].map(c=>grouped[c].length?renderWeekKnowledgeCard(c,grouped[c]):'').join('')}</div>
   ${renderWeekSkillCards(practice)}
@@ -405,7 +412,7 @@ function renderProgress(){
   <div class="quote-card">${icon('assets/brand/logo-mark.png')}La práctica de hoy construye el idioma de mañana.</div>`;
 }
 function chartPoints(daysCount, count=8){
-  const end=startOfDay(new Date()); let start=daysCount>3650?new Date(Math.min(PLAN_START.getTime(),end.getTime())):addDays(end,-daysCount);
+  const end=startOfDay(new Date()); let start=daysCount>3650?new Date(Math.min(planStart().getTime(),end.getTime())):addDays(end,-daysCount);
   const total=Math.max(1,daysBetween(start,end));
   return Array.from({length:count},(_,i)=>addDays(start,Math.round(total*i/(count-1))));
 }
