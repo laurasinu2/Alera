@@ -1,4 +1,4 @@
-const CACHE = 'alera-v13-interactive-theory';
+const CACHE = 'alera-v14-interactive-theory-v2';
 const CORE = [
   "./README.md",
   "./app.js",
@@ -61,7 +61,7 @@ const CORE = [
 ];
 
 // Reload the app shell from the network when available; keep offline fallback.
-const APP_SHELL = new Set(['index.html','app.js','data.js','styles.css','manifest.webmanifest']);
+const APP_SHELL = new Set(['index.html','app.js','data.js','grammar-lessons.js','grammar-checks.js','styles.css','manifest.webmanifest']);
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
