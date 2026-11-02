@@ -102,3 +102,13 @@ La interfaz usa ahora el azul del botón de acceso (#2F84D8 → #1A65C8) y una g
 - La caché de los archivos principales (`index.html`, `app.js`, `data.js`, `styles.css` y manifest) utiliza **network-first** con respaldo local para que una recarga conectada obtenga la versión más reciente y el acceso offline siga funcionando.
 - El Service Worker elimina solo cachés antiguas de Alera; no borra el almacenamiento local.
 - Con conexión ausente, recarga la versión offline disponible. La primera vez que llega esta funcionalidad a una instalación anterior puede ser necesario cerrar y volver a abrir Alera para que se active el Service Worker nuevo.
+
+## Curso interactivo de Grammar (noviembre 2026)
+
+- El guion aportado está incorporado a `grammar-lessons.js`: 23 unidades/apéndices de las semanas 1 a 3 y cinco recursos de repaso (incluidos reto y escritura final). No es texto de relleno.
+- Desde «Esta semana» > Grammar se accede a bloques y unidades. Cada unidad muestra teoría, actividades y soluciones ocultas; las opciones múltiples se corrigen en la propia pantalla, y hay espacio para respuestas libres.
+- Las actividades de escritura se pueden redactar en Alera o marcar como realizadas en papel. La respuesta del usuario, la pantalla en curso y la finalización quedan en `localStorage` en `store.units`.
+- El repaso por unidad se calcula desde su finalización a +1, +2, +4, +6, +10, +16 y +24 semanas, y se registra en `store.unitReviews`; las revisiones tardías no desplazan las fechas originales.
+- El avance semanal comprueba, al pasar cada lunes, que se haya completado al menos una unidad durante la semana anterior y que no queden unidades sin terminar de semanas más antiguas. En caso contrario, repite el bloque. Las unidades incompletas se arrastran al siguiente.
+- El contenido de Grammar de la semana 4 en adelante se mostrará como «Próximamente» hasta recibir el guion. Vocabulary muestra «Próximamente» sin alterar el resto del temario planificado.
+- El contenido se carga como archivo estático y entra en la caché offline de la PWA. Se mantiene la clave de progreso anterior `alera_pwa_v1` y la importación/exportación JSON.
