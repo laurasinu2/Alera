@@ -41,7 +41,8 @@ let ui = {
   modal:null,
   practiceDraft:null,
   grammarId:null,
-  reviewId:null
+  reviewId:null,
+  showGrammarReviewAnswers:false
 };
 
 function freshStore(){
@@ -315,7 +316,7 @@ function renderView(){
 function pageHead(title,subtitle){ return `<div class="page-head"><h1>${title}</h1><p>${subtitle}</p>${icon('assets/icons/ui/decorative-leaves.svg','decor-leaves')}</div>`; }
 
 
-function unitState(id){return store.units[id]||(store.units[id]={step:0,answers:{},writing:{},revealed:{},completedAt:null,startedAt:null});}
+function unitState(id){return store.units[id]||(store.units[id]={step:0,answers:{},writing:{},revealed:{},handwritten:{},completedAt:null,startedAt:null});}
 function unitCompleted(id){return !!store.units?.[id]?.completedAt;}
 function grammarUnitsForWeek(n){return GRAMMAR.units.filter(u=>u.week===n||(n===currentPlanWeek()&&u.week<n&&!unitCompleted(u.id)));}
 function renderGrammarWeekCard(items){
@@ -330,7 +331,7 @@ function openGrammarUnit(id){
   const st=unitState(id);if(!st.startedAt)st.startedAt=isoNow();saveStore();
   render();window.scrollTo(0,0);
 }
-function openGrammarReview(id){ui.view='grammar';ui.grammarId=null;ui.reviewId=id;ui.modal=null;render();window.scrollTo(0,0);}
+function openGrammarReview(id){ui.view='grammar';ui.grammarId=null;ui.reviewId=id;ui.showGrammarReviewAnswers=false;ui.modal=null;render();window.scrollTo(0,0);}
 function renderGrammarSyllabus(){
   const n=ui.week,units=grammarUnitsForWeek(n);
   const groups=[...new Set(units.map(u=>u.group))];
@@ -410,7 +411,7 @@ function renderGrammarLesson(){
     ${unitCompleted(unit.id)?'<div class="grammar-completed-notice">✓ Unidad completada. Puedes repasar su contenido cuando quieras.</div>':''}
     <section class="grammar-lesson-body card"><h2>${escapeHTML(item.title)}</h2>
       ${item.type==='theory'?`<div class="grammar-reading">${grammarMarkdown(item.text)}</div>`:
-      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. Las respuestas modelo no se muestran hasta que las consultes.</p><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
+      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. También puedes escribirlo en papel.</p><label class="grammar-handwriting-check"><input type="checkbox" ${st.handwritten?.[step]?"checked":""} onchange="grammarMarkHandwritten(\'${unit.id}\',${step},this.checked)"> He completado esta actividad en papel</label><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
       renderGrammarActivity(unit,step)}
     </section>
     <div class="grammar-lesson-actions"><button class="secondary-btn" onclick="grammarSetStep(-1)" ${step===0?'disabled':''}>‹ Anterior</button>
@@ -435,12 +436,13 @@ function grammarSaveWriting(id,step,n,value){
  const st=unitState(id),key=grammarAnswerKey(id,step,n);
  st.writing[key]=value;saveStore();
 }
+function grammarMarkHandwritten(id,step,checked){const st=unitState(id);if(!st.handwritten)st.handwritten={};st.handwritten[step]=!!checked;saveStore();}
 function grammarCompleteUnit(){
  const u=GRAMMAR.units.find(x=>x.id===ui.grammarId);if(!u)return;
  const st=unitState(u.id);
  if(!unitCompleted(u.id)){
    const last=u.steps.length-1,final=u.steps[last],written=(st.writing?.[grammarAnswerKey(u.id,last,0)]||'').trim();
-   if(final.type==='writing' && !written){toast('Escribe tu actividad final antes de completar la unidad');return;}
+   if(final.type==='writing' && !written && !st.handwritten?.[last]){toast('Escribe tu actividad final o indica que la hiciste en papel');return;}
    st.completedAt=isoNow();
    // Preserve legacy knowledge/review tracking for whole grammar topics.
    const groupUnits=GRAMMAR.units.filter(x=>x.group===u.group);
@@ -453,10 +455,11 @@ function grammarCompleteUnit(){
 }
 function renderGrammarReview(){
  const r=GRAMMAR.reviews.find(x=>x.id===ui.reviewId);if(!r)return renderGrammarSyllabus();
- // Reviews are reference worksheets rather than new curriculum units.
+ const text=ui.showGrammarReviewAnswers?r.text:r.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*?\*\*/g,'[Solución oculta]');
  return `<div class="grammar-layout"><button class="grammar-back" onclick="openGrammarHome()">‹ Todas las unidades</button>${pageHead(escapeHTML(r.title),'Repaso de los contenidos estudiados')}
-    <section class="grammar-lesson-body card"><div class="grammar-reading">${grammarMarkdown(r.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*?\*\*/g,'[Solución en el guion]'))}</div></section>
-    <button class="primary-btn" onclick="openGrammarHome()">Volver a las unidades</button></div>`;
+   <section class="grammar-lesson-body card"><div class="grammar-reading">${grammarMarkdown(text)}</div></section>
+   <button class="grammar-review-link" onclick="grammarToggleReviewAnswers()">${ui.showGrammarReviewAnswers?'Ocultar soluciones':'Mostrar soluciones'}</button>
+   <button class="primary-btn" style="margin-top:14px" onclick="openGrammarHome()">Volver a las unidades</button></div>`;
 }
 
 function renderWeek(){
@@ -843,6 +846,8 @@ window.grammarSetStep=grammarSetStep;
 window.grammarSubmitChoice=grammarSubmitChoice;
 window.grammarShowAnswer=grammarShowAnswer;
 window.grammarSaveWriting=grammarSaveWriting;
+window.grammarMarkHandwritten=grammarMarkHandwritten;
+window.grammarToggleReviewAnswers=()=>{ui.showGrammarReviewAnswers=!ui.showGrammarReviewAnswers;render();};
 window.grammarCompleteUnit=grammarCompleteUnit;
 window.toggleReadingMode=toggleReadingMode;window.toggleDifficulty=toggleDifficulty;window.practiceNext=practiceNext;window.practiceBack=practiceBack;window.savePractice=savePractice;window.setSeverity=setSeverity;window.completeReview=completeReview;window.saveProfile=saveProfile;window.exportData=exportData;window.resetAlera=resetAlera;
 window.installApp=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;ui.modal=null;render();};
