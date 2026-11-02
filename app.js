@@ -303,7 +303,7 @@ function renderTopbar(){
 }
 function renderBottomNav(){
   const items=[['week','Esta semana'],['reviews','Revisiones'],['practice','Práctica'],['knowledge','Biblioteca'],['progress','Progreso']];
-  return `<nav class="bottom-nav"><div class="bottom-nav-inner">${items.map(([v,l])=>`<button class="nav-btn ${ui.view===v?'active':''}" onclick="setView('${v}')">${icon(navIcon[v])}<span>${l}</span></button>`).join('')}</div></nav>`;
+  return `<nav class="bottom-nav"><div class="bottom-nav-inner">${items.map(([v,l])=>`<button class="nav-btn ${(ui.view===v||(v==='week'&&ui.view==='grammar'))?'active':''}" onclick="setView('${v}')">${icon(navIcon[v])}<span>${l}</span></button>`).join('')}</div></nav>`;
 }
 function renderView(){
   if(ui.view==='grammar')return ui.grammarId?renderGrammarLesson():ui.reviewId?renderGrammarReview():renderGrammarSyllabus();
@@ -411,7 +411,7 @@ function renderGrammarLesson(){
     ${unitCompleted(unit.id)?'<div class="grammar-completed-notice">✓ Unidad completada. Puedes repasar su contenido cuando quieras.</div>':''}
     <section class="grammar-lesson-body card"><h2>${escapeHTML(item.title)}</h2>
       ${item.type==='theory'?`<div class="grammar-reading">${grammarMarkdown(item.text)}</div>`:
-      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. También puedes escribirlo en papel.</p><label class="grammar-handwriting-check"><input type="checkbox" ${st.handwritten?.[step]?"checked":""} onchange="grammarMarkHandwritten(\'${unit.id}\',${step},this.checked)"> He completado esta actividad en papel</label><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
+      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. También puedes escribirlo en papel.</p><label class="grammar-handwriting-check"><input type="checkbox" ${st.handwritten?.[step]?"checked":""} onchange="grammarMarkHandwritten(\'${unit.id}\',${step},this.checked)"> He completado esta actividad en papel</label><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
       renderGrammarActivity(unit,step)}
     </section>
     <div class="grammar-lesson-actions"><button class="secondary-btn" onclick="grammarSetStep(-1)" ${step===0?'disabled':''}>‹ Anterior</button>
@@ -455,7 +455,7 @@ function grammarCompleteUnit(){
 }
 function renderGrammarReview(){
  const r=GRAMMAR.reviews.find(x=>x.id===ui.reviewId);if(!r)return renderGrammarSyllabus();
- const text=ui.showGrammarReviewAnswers?r.text:r.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*?\*\*/g,'[Solución oculta]');
+ const text=ui.showGrammarReviewAnswers?r.text:r.text.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*?\*\*/g,'[Solución oculta]');
  return `<div class="grammar-layout"><button class="grammar-back" onclick="openGrammarHome()">‹ Todas las unidades</button>${pageHead(escapeHTML(r.title),'Repaso de los contenidos estudiados')}
    <section class="grammar-lesson-body card"><div class="grammar-reading">${grammarMarkdown(text)}</div></section>
    <button class="grammar-review-link" onclick="grammarToggleReviewAnswers()">${ui.showGrammarReviewAnswers?'Ocultar soluciones':'Mostrar soluciones'}</button>
