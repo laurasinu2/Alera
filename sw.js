@@ -1,4 +1,4 @@
-const CACHE = 'alera-v12-grammar-course';
+const CACHE = 'alera-v13-interactive-theory';
 const CORE = [
   "./README.md",
   "./app.js",
@@ -54,6 +54,7 @@ const CORE = [
   "./assets/icons/ui/writing-pencil.svg",
   "./data.js",
   "./grammar-lessons.js",
+  "./grammar-checks.js",
   "./index.html",
   "./manifest.webmanifest",
   "./styles.css"
