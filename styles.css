@@ -452,3 +452,30 @@ input:not([type="range"]),select,textarea,
 .grammar-handwriting-check{display:flex;align-items:center;gap:11px;padding:13px 12px;margin:12px 0;background:#f2f8ff;border:1px solid #d6e7f7;border-radius:13px;font-size:13px;color:#265a91;cursor:pointer}
 .grammar-handwriting-check input{width:20px;height:20px;flex:0 0 20px;accent-color:#2f84d8}
 .grammar-handwriting-check:has(input:checked){background:#e8f7ef;border-color:#b5e4c9;color:#207749}
+
+/* Interactive Grammar theory, mobile-first concept cards and checkpoints. */
+.grammar-theory-subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;font-size:12px;color:var(--muted)}
+.grammar-theory-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:#e8f4ff;color:#1565b8;border-radius:99px;font-weight:700;letter-spacing:.02em}
+.grammar-theory .grammar-reading{padding:2px 0 7px}
+.grammar-theory .grammar-reading h3{margin-top:12px}
+.grammar-mini-quiz{margin:18px -2px 6px;padding:18px 16px 15px;border:1px solid #c9e0f6;border-radius:17px;background:linear-gradient(145deg,#eff8ff,#f8fcff)}
+.grammar-mini-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:#246fab}
+.grammar-mini-quiz h3{font-size:16px;line-height:1.42;color:var(--ink);margin:9px 0 15px}
+.grammar-mini-options{display:grid;gap:9px}
+.grammar-mini-option{border:1px solid #d0e2f3;border-radius:13px;background:white;color:var(--ink);min-height:48px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:14px;line-height:1.35;font-weight:600;cursor:pointer}
+.grammar-mini-option:focus-visible{outline:3px solid #7bb8ff;outline-offset:3px}
+.grammar-mini-option.grammar-mini-correct{border-color:#68b88e;background:#eaf9ef;color:#186b3d}
+.grammar-mini-option.grammar-mini-incorrect{border-color:#df9588;background:#fff4f1;color:#924c40}
+.grammar-mini-option span{font-size:18px}
+.grammar-mini-feedback{font-size:13px;line-height:1.55;margin-top:13px;border-radius:10px;padding:11px 12px}
+.grammar-mini-feedback strong{display:block;margin-bottom:3px}
+.grammar-mini-feedback p{margin:0}
+.grammar-mini-feedback small{display:block;margin-top:4px}
+.grammar-mini-success{background:#e2f5e9;color:#235c39}
+.grammar-mini-retry{background:#fff0e9;color:#844c34}
+.grammar-mini-help{font-size:12px;margin:13px 0 0;color:var(--muted)}
+.grammar-practice-prompt{margin:18px 0 2px;border:1px solid #dce8f4;border-radius:14px;background:#f9fcff;padding:13px 14px}
+.grammar-practice-prompt summary{cursor:pointer;font-size:13px;font-weight:700;color:#256bb3}
+.grammar-practice-prompt p{font-size:12px;color:var(--muted);margin:11px 0 8px}
+.grammar-practice-prompt textarea{min-height:96px}
+@media(max-width:390px){.grammar-mini-quiz{padding:14px 12px}.grammar-mini-option{font-size:13.5px}.grammar-lesson-body{padding:16px 14px}}
