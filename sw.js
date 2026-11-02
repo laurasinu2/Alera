@@ -1,4 +1,4 @@
-const CACHE = 'alera-v10-in-app-update';
+const CACHE = 'alera-v11-grammar-lessons';
 const CORE = [
   "./README.md",
   "./app.js",
@@ -53,6 +53,7 @@ const CORE = [
   "./assets/icons/ui/vocabulary-book.svg",
   "./assets/icons/ui/writing-pencil.svg",
   "./data.js",
+  "./grammar-lessons.js",
   "./index.html",
   "./manifest.webmanifest",
   "./styles.css"
