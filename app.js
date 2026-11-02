@@ -499,10 +499,49 @@ function renderWeekSkillCard(p){
   return `<section class="card topic-card week-skill-card"><div class="week-skill-tile ${uiOnly?'ui-icon-tile':''} ${p.skill}"><img src="${tile}" alt=""></div><div><h3>${skillNames[p.skill]}<span class="topic-meta">${done?'1/1':'0/1'}</span></h3><div class="mini-list"><div class="mini-row practice-objective"><span class="check ${done?'done':''}" aria-hidden="true"></span><button class="link-btn mini-topic-link" onclick="openPractice('${p.skill}',${ui.week})">${escapeHTML(p.desc)}</button></div></div></div><button class="card-chevron" aria-label="Registrar sesión de ${skillNames[p.skill]}" onclick="openPractice('${p.skill}',${ui.week})">${icon('assets/icons/ui/chevron-right.svg','chevron')}</button></section>`;
 }
 
+
+ function nextGrammarUnitReview(id){
+  const completed=parseISO(store.units?.[id]?.completedAt);if(!completed)return null;
+  const covered=new Set((store.unitReviews?.[id]||[]).flatMap(e=>e.slots||[]));
+  for(let i=0;i<REVIEW_OFFSETS.length;i++)if(!covered.has(i))return {slot:i,offset:REVIEW_OFFSETS[i],due:addDays(completed,REVIEW_OFFSETS[i])};
+  return null;
+ }
+ function dueGrammarUnitReviews(){
+  const out=[];
+  GRAMMAR.units.forEach(unit=>{
+   const next=nextGrammarUnitReview(unit.id);if(!next||next.due>endOfWeek(new Date()))return;
+   const reviews=store.unitReviews?.[unit.id]||[],last=reviews[reviews.length-1];
+   const priority=next.due<startOfWeek(new Date())||last?.result==='forgot'?'high':last?.result==='hard'?'med':'normal';
+   out.push({unit,next,priority});
+  });
+  const rank={high:0,med:1,normal:2};
+  return out.sort((a,b)=>rank[a.priority]-rank[b.priority]||a.next.due-b.next.due);
+ }
+ function renderGrammarUnitReviewCard(c){
+  const u=c.unit;
+  return `<section class="card review-card"><div class="review-top"><img class="tile-icon" src="${tileIcon.Grammar}" alt=""><div><h3>${escapeHTML(u.code)} · ${escapeHTML(u.title)}</h3><div class="subtitle">Grammar · +${c.next.offset} días desde que acabaste la unidad</div><div class="review-insight">${c.next.due<startOfWeek(new Date())?'Repaso pendiente de una semana anterior':'Repaso programado esta semana'}</div></div></div><button class="primary-btn" onclick="openGrammarUnitReview('${u.id}')">Revisar unidad</button></section>`;
+ }
+ function renderGrammarUnitReviewModal(){
+  const unit=GRAMMAR.units.find(u=>u.id===ui.modal.id);if(!unit)return '';
+  const next=nextGrammarUnitReview(unit.id);
+  return modalWrap(`${modalHead('Revisión · '+escapeHTML(unit.title),next?'Repaso +'+next.offset+' días desde que la completaste':'Repaso de Grammar')}
+    <section class="card" style="padding:14px;margin-bottom:12px"><p>¿Cuánto recuerdas de esta unidad?</p><button class="grammar-solution-toggle" onclick="closeModal();openGrammarUnit('${unit.id}')">Volver a estudiar →</button></section>
+    <div class="review-rating"><button onclick="completeGrammarUnitReview('${unit.id}','forgot')">No lo recordaba</button><button onclick="completeGrammarUnitReview('${unit.id}','hard')">Me ha costado</button><button onclick="completeGrammarUnitReview('${unit.id}','good')">Bien</button><button onclick="completeGrammarUnitReview('${unit.id}','easy')">Muy fácil</button></div>`);
+ }
+ function completeGrammarUnitReview(id,result){
+  const next=nextGrammarUnitReview(id);if(!next)return;
+  const previously=new Set((store.unitReviews?.[id]||[]).flatMap(e=>e.slots||[])),slots=[];
+  for(let i=0;i<REVIEW_OFFSETS.length;i++)if(!previously.has(i)&&addDays(parseISO(store.units[id].completedAt),REVIEW_OFFSETS[i])<=endOfWeek(new Date()))slots.push(i);
+  if(!slots.length)slots.push(next.slot);
+  if(!store.unitReviews)store.unitReviews={};if(!store.unitReviews[id])store.unitReviews[id]=[];
+  store.unitReviews[id].push({date:isoNow(),result,slots});
+  saveStore();ui.modal=null;render();toast('Revisión de Grammar guardada');
+ }
+
 function getReviewCards(){
   const cards=[];
   SEED.knowledge.forEach(k=>{
-    if(!isLearned(k.id))return;
+    if(k.category==='Grammar'||!isLearned(k.id))return;
     const due=scheduledDueThisWeek(k.id); const rein=pendingReinforcement(k.id);
     if(due||rein){
       const score=difficultyScore(k.id); let priority=score>=4|| (due&&due.due<startOfWeek(new Date()))?'high':score>=2||rein?'med':'normal';
@@ -517,12 +556,15 @@ function getReviewCards(){
   });
 }
 function renderReviews(){
-  const cards=getReviewCards();
+  const cards=getReviewCards(),units=dueGrammarUnitReviews();
+  const shownUnits=units.filter(c=>ui.reviewFilter==='all'||(ui.reviewFilter==='priority'&&c.priority!=='normal'));
+  const total=cards.length+units.length;
+  const priority=cards.filter(c=>c.priority!=='normal').length+units.filter(c=>c.priority!=='normal').length;
   const shown=cards.filter(c=>ui.reviewFilter==='all'||(ui.reviewFilter==='priority'&&c.priority!=='normal'));
-  const completedThisWeek=store.reviewEvents.filter(e=>parseISO(e.date)>=startOfWeek(new Date())).length;
-  return `${pageHead('Revisiones',`${cards.length} repaso${cards.length===1?'':'s'} esta semana · ${cards.filter(c=>c.priority!=='normal').length} prioritarios`)}
-  <div class="segmented"><button class="segment ${ui.reviewFilter==='all'?'active':''}" onclick="setReviewFilter('all')">Todos (${cards.length})</button><button class="segment ${ui.reviewFilter==='priority'?'active':''}" onclick="setReviewFilter('priority')">Prioritarios (${cards.filter(c=>c.priority!=='normal').length})</button><button class="segment" disabled>Hechos (${completedThisWeek})</button></div>
-  ${shown.length?shown.map(renderReviewCard).join(''):`<div class="card empty">${icon('assets/icons/ui/reviews.svg')}<h3>Todo al día</h3><p>No hay revisiones pendientes para esta semana. Las próximas aparecerán aquí según la fecha original en la que aprendiste cada tema.</p></div>`}`;
+  const completedThisWeek=store.reviewEvents.filter(e=>parseISO(e.date)>=startOfWeek(new Date())).length+Object.values(store.unitReviews||{}).flat().filter(e=>parseISO(e.date)>=startOfWeek(new Date())).length;
+  return `${pageHead('Revisiones',`${total} repaso${total===1?'':'s'} esta semana · ${priority} prioritarios`)}
+  <div class="segmented"><button class="segment ${ui.reviewFilter==='all'?'active':''}" onclick="setReviewFilter('all')">Todos (${total})</button><button class="segment ${ui.reviewFilter==='priority'?'active':''}" onclick="setReviewFilter('priority')">Prioritarios (${priority})</button><button class="segment" disabled>Hechos (${completedThisWeek})</button></div>
+  ${shown.length||shownUnits.length?shownUnits.map(renderGrammarUnitReviewCard).join('')+shown.map(renderReviewCard).join(''):`<div class="card empty">${icon('assets/icons/ui/reviews.svg')}<h3>Todo al día</h3><p>No hay revisiones pendientes para esta semana. Las próximas aparecerán aquí según la fecha original en la que aprendiste cada tema.</p></div>`}`;
 }
 function renderReviewCard(c){
   const k=c.item, st=getKState(k.id), ret=retentionAt(k.id); const last=store.reviewEvents.filter(e=>e.knowledgeId===k.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
@@ -615,6 +657,7 @@ function renderModal(){
   if(!ui.modal){root.innerHTML='';return;}
   if(ui.modal.type==='practice')root.innerHTML=renderPracticeModal();
   else if(ui.modal.type==='review')root.innerHTML=renderReviewModal();
+  else if(ui.modal.type==='unitReview')root.innerHTML=renderGrammarUnitReviewModal();
   else if(ui.modal.type==='knowledge')root.innerHTML=renderKnowledgeModal(ui.modal.id);
   else if(ui.modal.type==='weekCategory')root.innerHTML=renderWeekCategoryModal(ui.modal.category,ui.modal.week);
   else if(ui.modal.type==='profile')root.innerHTML=renderProfileModal();
@@ -817,6 +860,8 @@ window.setKnowledgeQuery=v=>{ui.knowledgeQuery=v; const pos=document.activeEleme
 window.setProgressRange=r=>{ui.progressRange=r;render();};
 window.openPractice=(skill,week)=>{ui.modal={type:'practice',skill,week:Number(week)||currentPlanWeek(),step:1};ui.practiceDraft=null;renderModal();};
 window.openReview=(id,kind)=>{ui.modal={type:'review',id,kind};renderModal();};
+window.openGrammarUnitReview=id=>{ui.modal={type:'unitReview',id};renderModal();};
+window.completeGrammarUnitReview=completeGrammarUnitReview;
 window.openKnowledge=id=>{if(knowledgeById[id]?.category==='Grammar'){ui.week=knowledgeById[id].week;openGrammarHome();return;}ui.modal={type:'knowledge',id};renderModal();};
 window.openWeekCategory=(category,week)=>{if(category==='Grammar'){ui.week=Number(week);openGrammarHome();return;}ui.modal={type:'weekCategory',category,week:Number(week)};renderModal();};
 window.openProfile=()=>{ui.modal={type:'profile'};renderModal();};
