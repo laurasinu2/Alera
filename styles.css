@@ -447,3 +447,8 @@ input:not([type="range"]),select,textarea,
 .grammar-table-text{overflow-x:auto;font-size:13px}
 @media(min-width:700px){.grammar-layout{padding:0 18px 30px}.grammar-lesson-body{padding:24px 28px}}
 @media(max-width:370px){.grammar-lesson-name{font-size:23px}.grammar-lesson-body{padding:16px 14px}.grammar-unit-number{width:39px;height:39px}.grammar-review-link{font-size:12px}}
+
+/* Handwritten Grammar exercises */
+.grammar-handwriting-check{display:flex;align-items:center;gap:11px;padding:13px 12px;margin:12px 0;background:#f2f8ff;border:1px solid #d6e7f7;border-radius:13px;font-size:13px;color:#265a91;cursor:pointer}
+.grammar-handwriting-check input{width:20px;height:20px;flex:0 0 20px;accent-color:#2f84d8}
+.grammar-handwriting-check:has(input:checked){background:#e8f7ef;border-color:#b5e4c9;color:#207749}
