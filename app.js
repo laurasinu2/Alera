@@ -2,6 +2,7 @@
 'use strict';
 
 const SEED = window.ALERA_SEED;
+const GRAMMAR = window.ALERA_GRAMMAR || {units:[],reviews:[]};
 const STORE_KEY = 'alera_pwa_v1';
 const DEVICE_ACCESS_KEY = 'alera_device_access_v1';
 const FIRST_ACCESS_PIN = '2917';
@@ -38,11 +39,13 @@ let ui = {
   knowledgeQuery:'',
   progressRange:'4w',
   modal:null,
-  practiceDraft:null
+  practiceDraft:null,
+  grammarId:null,
+  reviewId:null
 };
 
 function freshStore(){
-  return {version:1, profile:null, knowledge:{}, sessions:[], reviewEvents:[], reinforcements:[], plan:null, createdAt:isoNow()};
+  return {version:1, profile:null, knowledge:{}, sessions:[], reviewEvents:[], reinforcements:[], units:{}, unitReviews:{}, plan:null, createdAt:isoNow()};
 }
 function loadStore(){
   try {
@@ -82,6 +85,8 @@ function getWeekDates(n){
 }
 function weekForDate(d){ return currentPlanWeek(); }
 function syncPlanWeek(){
+  if(!store.units)store.units={};
+  if(!store.unitReviews)store.unitReviews={};
   if(!store.plan){
     store.plan={start:store.profile?localDateKey(startOfWeek(new Date())):DEFAULT_PLAN_START,week:1,processed:0};
     saveStore();
@@ -92,12 +97,15 @@ function syncPlanWeek(){
     const start=addDays(planStart(),store.plan.processed*7);
     const end=addDays(start,7);
     const active=store.plan.week;
-    const completed=SEED.knowledge.some(k=>{
-      if(k.week!==active)return false;
-      const date=parseISO(store.knowledge?.[k.id]?.learnedAt);
+    const available=GRAMMAR.units.some(u=>u.week===active);
+    const completed=GRAMMAR.units.some(u=>{
+      if(u.week>active)return false;
+      const date=parseISO(store.units[u.id]?.completedAt);
       return date && date>=start && date<end;
     });
-    if(completed && active<19)store.plan.week++;
+    const backlogClear=GRAMMAR.units.filter(u=>u.week<active).every(u=>!!store.units[u.id]?.completedAt);
+    // Never skip a calendar week without study, or advance while older lessons remain.
+    if(available && completed && backlogClear && active<19)store.plan.week++;
     store.plan.processed++;
     changed=true;
   }
@@ -297,6 +305,7 @@ function renderBottomNav(){
   return `<nav class="bottom-nav"><div class="bottom-nav-inner">${items.map(([v,l])=>`<button class="nav-btn ${ui.view===v?'active':''}" onclick="setView('${v}')">${icon(navIcon[v])}<span>${l}</span></button>`).join('')}</div></nav>`;
 }
 function renderView(){
+  if(ui.view==='grammar')return ui.grammarId?renderGrammarLesson():ui.reviewId?renderGrammarReview():renderGrammarSyllabus();
   if(ui.view==='week')return renderWeek();
   if(ui.view==='reviews')return renderReviews();
   if(ui.view==='practice')return renderPractice();
@@ -305,16 +314,161 @@ function renderView(){
 }
 function pageHead(title,subtitle){ return `<div class="page-head"><h1>${title}</h1><p>${subtitle}</p>${icon('assets/icons/ui/decorative-leaves.svg','decor-leaves')}</div>`; }
 
+
+function unitState(id){return store.units[id]||(store.units[id]={step:0,answers:{},writing:{},revealed:{},completedAt:null,startedAt:null});}
+function unitCompleted(id){return !!store.units?.[id]?.completedAt;}
+function grammarUnitsForWeek(n){return GRAMMAR.units.filter(u=>u.week===n||(n===currentPlanWeek()&&u.week<n&&!unitCompleted(u.id)));}
+function renderGrammarWeekCard(items){
+  const units=grammarUnitsForWeek(ui.week),done=units.filter(u=>unitCompleted(u.id)).length;
+  const groups=items.map(k=>k.name).join(' · ');
+  return `<section class="card grammar-week-card"><button class="grammar-week-open" onclick="openGrammarHome()"><img class="tile-icon" src="${tileIcon.Grammar}" alt=""><span><strong>Grammar</strong><small>${units.length?`${done}/${units.length} unidades completadas`:'Próximamente'}</small><small>${escapeHTML(groups)}</small></span>${icon('assets/icons/ui/chevron-right.svg','chevron')}</button><div class="grammar-week-progress"><i style="width:${units.length?Math.round(done/units.length*100):0}%"></i></div><button class="grammar-open-cta" onclick="openGrammarHome()">Ver unidades y estudiar →</button></section>`;
+}
+function openGrammarHome(){ui.view='grammar';ui.grammarId=null;ui.reviewId=null;ui.modal=null;render();window.scrollTo(0,0);}
+function openGrammarUnit(id){
+  const unit=GRAMMAR.units.find(u=>u.id===id);if(!unit)return;
+  ui.view='grammar';ui.grammarId=id;ui.reviewId=null;ui.modal=null;
+  const st=unitState(id);if(!st.startedAt)st.startedAt=isoNow();saveStore();
+  render();window.scrollTo(0,0);
+}
+function openGrammarReview(id){ui.view='grammar';ui.grammarId=null;ui.reviewId=id;ui.modal=null;render();window.scrollTo(0,0);}
+function renderGrammarSyllabus(){
+  const n=ui.week,units=grammarUnitsForWeek(n);
+  const groups=[...new Set(units.map(u=>u.group))];
+  const done=units.filter(u=>unitCompleted(u.id)).length;
+  const old=units.filter(u=>u.week<n&&!unitCompleted(u.id)).length;
+  return `<div class="grammar-layout"><button class="grammar-back" onclick="setView('week')">‹ Volver a Esta semana</button>${pageHead('Grammar · Semana '+n,`${done}/${units.length} unidades terminadas${old?' · '+old+' pendientes anteriores':''}`)}
+    ${units.length?`<div class="grammar-overall-progress"><i style="width:${Math.round(done/units.length*100)}%"></i></div>`:''}
+    ${old?`<div class="grammar-carry-notice">Tienes ${old} unidad${old===1?'':'es'} pendiente${old===1?'':'s'} de semanas anteriores. Complétalas antes de desbloquear una semana más.</div>`:''}
+    ${units.length?groups.map(g=>{
+      const groupUnits=units.filter(u=>u.group===g), k=knowledgeById[g];
+      const count=groupUnits.filter(u=>unitCompleted(u.id)).length;
+      return `<section class="grammar-group"><div class="grammar-group-head"><h2>${escapeHTML(k?.name||'Grammar')}</h2><span>${count}/${groupUnits.length}</span></div>
+        ${groupUnits.map(u=>{const st=unitState(u.id),done=unitCompleted(u.id);return `<button class="grammar-unit-row" onclick="openGrammarUnit('${u.id}')"><span class="grammar-unit-number ${done?'is-done':''}">${done?'✓':escapeHTML(u.code)}</span><span class="grammar-unit-desc"><strong>${escapeHTML(u.title)}</strong><small>${done?'Completada · puedes repetirla':st.startedAt?'En curso · continuar':u.week<n?'Pendiente anterior':'Sin empezar'}</small></span><span class="grammar-unit-arrow">›</span></button>`;}).join('')}
+      </section>`;
+    }).join(''):`<section class="card empty"><h3>Próximamente</h3><p>Estamos preparando las lecciones interactivas de esta semana. Las semanas 1–3 ya están disponibles.</p></section>`}
+    ${GRAMMAR.reviews.filter(r=>r.week===n && /REPASO SEMANA/.test(r.title)).map(r=>`<button class="grammar-review-link" onclick="openGrammarReview('${r.id}')">✦ ${escapeHTML(r.title.replace('REPASO','Repaso'))} <span>Practicar →</span></button>`).join('')}
+    ${n===3?GRAMMAR.reviews.filter(r=>!/REPASO SEMANA/.test(r.title)).map(r=>`<button class="grammar-review-link" onclick="openGrammarReview('${r.id}')">✦ ${escapeHTML(r.title)} <span>Abrir →</span></button>`).join(''):''}
+    <p class="fineprint">Las fechas de repaso comienzan cuando completas cada unidad. Las semanas sin actividad no hacen avanzar el plan.</p></div>`;
+}
+function grammarInline(raw){
+ return escapeHTML(raw).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g,'<em>$1</em>');
+}
+function grammarMarkdown(raw){
+ const blocks=String(raw||'').replace(/\r/g,'').split(/\n\s*\n/);
+ return blocks.map(b=>{
+   const t=b.trim();if(!t)return '';
+   if(/^### /.test(t))return `<h4>${grammarInline(t.slice(4))}</h4>`;
+   if(/^## /.test(t))return `<h3>${grammarInline(t.slice(3))}</h3>`;
+   if(/^[-*] /m.test(t)&&t.split('\n').every(x=>/^[-*] /.test(x.trim())))return `<ul>${t.split('\n').map(x=>`<li>${grammarInline(x.trim().replace(/^[-*] /,''))}</li>`).join('')}</ul>`;
+   if(/^\|/.test(t))return `<div class="grammar-table-text">${t.split('\n').map(x=>grammarInline(x)).join('<br>')}</div>`;
+   return `<p>${t.split('\n').map(x=>grammarInline(x)).join('<br>')}</p>`;
+ }).join('');
+}
+function grammarActivityParts(content){
+ const pattern=/\*\*Respuesta(?: posible| preferible)?:\s*([\s\S]*?)\*\*/g;
+ const out=[],raw=String(content||'');let from=0,m;
+ while((m=pattern.exec(raw))){
+   const prompt=raw.slice(from,m.index).trim();
+   const answer=m[1].trim();
+   if(prompt)out.push({prompt,answer});
+   from=pattern.lastIndex;
+ }
+ const tail=raw.slice(from).trim();
+ if(out.length && tail){
+   if(!out[out.length-1].answer)out[out.length-1].answer=tail;
+   else out.push({prompt:tail,answer:''});
+ } else if(!out.length&&raw.trim())out.push({prompt:raw.trim(),answer:''});
+ return out;
+}
+function choiceOptions(prompt){
+ const matches=[...prompt.matchAll(/(?:^|\n)\s*([ABC])\.\s*(.+?)(?=\n|$)/g)];
+ return matches.length>=2?matches.map(m=>({letter:m[1],value:m[2].trim()})):[];
+}
+function grammarAnswerKey(id,step,n){return step+'_'+n;}
+function renderGrammarActivity(unit,step){
+ const st=unitState(unit.id),parts=grammarActivityParts(unit.steps[step].text);
+ return parts.map((q,i)=>{
+   const key=grammarAnswerKey(unit.id,step,i),chosen=st.answers?.[key],shown=st.revealed?.[key],opts=choiceOptions(q.prompt);
+   const letter=(q.answer.match(/^\s*([ABC])(?:\.|\b)/)||[])[1];
+   let prompt=q.prompt.replace(/(?:^|\n)\s*[ABC]\.\s*.+(?=\n|$)/g,'').trim();
+   // A response can include the correct answer text as well as its letter.
+   return `<section class="grammar-question"><div class="grammar-question-number">Ejercicio ${i+1}</div><div class="grammar-reading">${grammarMarkdown(prompt)}</div>
+      ${opts.length?`<div class="grammar-options">${opts.map(o=>{const checked=chosen===o.letter,correct=letter===o.letter;return `<button class="grammar-option ${checked?'selected':''} ${checked?(correct?'correct':'wrong'):''}" onclick="grammarSubmitChoice('${unit.id}',${step},${i},'${o.letter}')"><b>${o.letter}</b>${grammarInline(o.value)}</button>`;}).join('')}</div>${chosen&&letter?`<div class="grammar-feedback ${chosen===letter?'good':'bad'}">${chosen===letter?'✓ ¡Correcto!':'Inténtalo de nuevo. Puedes consultar la solución.'}</div>`:''}`:''}
+      ${!opts.length&&!/escritura manual/i.test(unit.steps[step].title)?`<textarea class="grammar-answer-input" placeholder="Escribe tu respuesta (opcional)" oninput="grammarSaveWriting('${unit.id}',${step},${i},this.value)">${escapeHTML(st.writing?.[key]||'')}</textarea>`:''}
+      ${q.answer?`<button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},${i})">${shown?'Ocultar solución':'Ver solución'}</button>${shown?`<div class="grammar-solution">${grammarMarkdown(q.answer)}</div>`:''}`:''}
+    </section>`;
+ }).join('');
+}
+function renderGrammarLesson(){
+ const unit=GRAMMAR.units.find(u=>u.id===ui.grammarId);if(!unit)return renderGrammarSyllabus();
+ const st=unitState(unit.id),step=clamp(Number(st.step||0),0,unit.steps.length-1),item=unit.steps[step];
+ const progress=Math.round((step+1)/unit.steps.length*100);
+ return `<div class="grammar-layout"><button class="grammar-back" onclick="openGrammarHome()">‹ Todas las unidades</button>
+    <div class="grammar-lesson-top"><span>${escapeHTML(unit.code)} · ${escapeHTML(knowledgeById[unit.group]?.name||'Grammar')}</span><span>${step+1}/${unit.steps.length}</span></div>
+    <div class="grammar-overall-progress"><i style="width:${progress}%"></i></div>
+    <h1 class="grammar-lesson-name">${escapeHTML(unit.title)}</h1>
+    ${unitCompleted(unit.id)?'<div class="grammar-completed-notice">✓ Unidad completada. Puedes repasar su contenido cuando quieras.</div>':''}
+    <section class="grammar-lesson-body card"><h2>${escapeHTML(item.title)}</h2>
+      ${item.type==='theory'?`<div class="grammar-reading">${grammarMarkdown(item.text)}</div>`:
+      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. Las respuestas modelo no se muestran hasta que las consultes.</p><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
+      renderGrammarActivity(unit,step)}
+    </section>
+    <div class="grammar-lesson-actions"><button class="secondary-btn" onclick="grammarSetStep(-1)" ${step===0?'disabled':''}>‹ Anterior</button>
+     ${step===unit.steps.length-1?`<button class="primary-btn" onclick="grammarCompleteUnit()">${unitCompleted(unit.id)?'Volver a unidades':'✓ Completar unidad'}</button>`:`<button class="primary-btn" onclick="grammarSetStep(1)">Continuar →</button>`}</div>
+    <p class="fineprint">Progreso guardado en este dispositivo. Las revisiones se programan desde la fecha de finalización.</p></div>`;
+}
+function grammarSetStep(delta){
+ const u=GRAMMAR.units.find(x=>x.id===ui.grammarId);if(!u)return;
+ const st=unitState(u.id);st.step=clamp(Number(st.step||0)+delta,0,u.steps.length-1);
+ saveStore();render();window.scrollTo(0,0);
+}
+function grammarSubmitChoice(id,step,n,letter){
+ const u=GRAMMAR.units.find(x=>x.id===id);if(!u)return;
+ const st=unitState(id),key=grammarAnswerKey(id,step,n);st.answers[key]=letter;
+ saveStore();render();
+}
+function grammarShowAnswer(id,step,n){
+ const st=unitState(id),key=grammarAnswerKey(id,step,n);
+ st.revealed[key]=!st.revealed[key];saveStore();render();
+}
+function grammarSaveWriting(id,step,n,value){
+ const st=unitState(id),key=grammarAnswerKey(id,step,n);
+ st.writing[key]=value;saveStore();
+}
+function grammarCompleteUnit(){
+ const u=GRAMMAR.units.find(x=>x.id===ui.grammarId);if(!u)return;
+ const st=unitState(u.id);
+ if(!unitCompleted(u.id)){
+   const last=u.steps.length-1,final=u.steps[last],written=(st.writing?.[grammarAnswerKey(u.id,last,0)]||'').trim();
+   if(final.type==='writing' && !written){toast('Escribe tu actividad final antes de completar la unidad');return;}
+   st.completedAt=isoNow();
+   // Preserve legacy knowledge/review tracking for whole grammar topics.
+   const groupUnits=GRAMMAR.units.filter(x=>x.group===u.group);
+   if(groupUnits.every(x=>unitCompleted(x.id))){
+     const state=getKState(u.group);if(!state.learnedAt)state.learnedAt=st.completedAt;
+   }
+   saveStore();toast('Unidad completada · progreso guardado');
+ }
+ openGrammarHome();
+}
+function renderGrammarReview(){
+ const r=GRAMMAR.reviews.find(x=>x.id===ui.reviewId);if(!r)return renderGrammarSyllabus();
+ // Reviews are reference worksheets rather than new curriculum units.
+ return `<div class="grammar-layout"><button class="grammar-back" onclick="openGrammarHome()">‹ Todas las unidades</button>${pageHead(escapeHTML(r.title),'Repaso de los contenidos estudiados')}
+    <section class="grammar-lesson-body card"><div class="grammar-reading">${grammarMarkdown(r.text.replace(/\*\*Respuesta(?: posible)?:[\s\S]*?\*\*/g,'[Solución en el guion]'))}</div></section>
+    <button class="primary-btn" onclick="openGrammarHome()">Volver a las unidades</button></div>`;
+}
+
 function renderWeek(){
   const week=SEED.weeks.find(w=>w.number===ui.week), items=plannedItems(ui.week), practice=plannedPractice(ui.week);
-  const total=items.length+practice.length, doneK=items.filter(k=>isLearned(k.id)).length, doneP=practice.filter(p=>sessionsForWeek(ui.week,p.skill).length).length, done=doneK+doneP, pct=total?Math.round(done/total*100):0;
+  const availableGrammar=grammarUnitsForWeek(ui.week), total=availableGrammar.length+practice.length, doneK=availableGrammar.filter(u=>unitCompleted(u.id)).length, doneP=practice.filter(p=>sessionsForWeek(ui.week,p.skill).length).length, done=doneK+doneP, pct=total?Math.round(done/total*100):0;
   const today=new Date(); const dates=getWeekDates(ui.week); const before=today<planStart() && ui.week===1;
   const dateLabel=formatWeekRange(dates.start,dates.end);
   const active=ui.week===currentPlanWeek();
   const grouped={Grammar:items.filter(i=>i.category==='Grammar'),Vocabulary:items.filter(i=>i.category==='Vocabulary'),Pronunciation:items.filter(i=>i.category==='Pronunciation')};
   return `${pageHead(`Buenos días, ${escapeHTML(store.profile.name.split(' ')[0])}`,before?'Tu plan empieza el lunes. Puedes explorarlo desde ahora.':'Esto es lo importante de esta semana.')}
   <div class="week-switch"><button onclick="setWeek(${ui.week-1})" ${ui.week<=1?'disabled':''}>‹</button><div class="week-label"><strong>Semana ${ui.week}</strong><span>${escapeHTML(dateLabel)}</span></div><button onclick="setWeek(${ui.week+1})" ${ui.week>=19?'disabled':''}>›</button></div>
-  ${active?'<p class="fineprint">Si no marcas ningún tema como aprendido esta semana, se repetirá automáticamente la siguiente.</p>':''}
+  ${active?'<p class="fineprint">El plan avanza los lunes solo si completas una unidad y no quedan unidades pendientes de semanas anteriores.</p>':''}
   <section class="hero-card"><div class="hero-row"><div><div class="hero-title">Semana ${ui.week} · ${escapeHTML(dateLabel)}</div><div class="hero-stats"><div class="hero-stat"><span class="dot-icon">◉</span>${total} objetivos en total</div><div class="hero-stat"><span class="dot-icon">✓</span>${done} completados</div><div class="hero-stat"><span class="dot-icon"></span>${total-done} pendientes</div></div></div><div><div class="ring" style="--p:${pct}"><span>${pct}%</span></div><div class="hero-note">Avanza a tu ritmo durante la semana.</div></div></div></section>
   <div class="section-title"><h2>Tus temas de esta semana</h2><button class="link-btn" onclick="setView('knowledge')">Ver todos →</button></div>
   <div class="topic-grid-desktop">${['Grammar','Vocabulary','Pronunciation'].map(c=>grouped[c].length?renderWeekKnowledgeCard(c,grouped[c]):'').join('')}</div>
@@ -323,6 +477,8 @@ function renderWeek(){
   ${week.reason?`<div class="week-reason"><strong>Por qué esta semana:</strong> ${escapeHTML(week.reason)}</div>`:''}`;
 }
 function renderWeekKnowledgeCard(category,items){
+  if(category==='Grammar')return renderGrammarWeekCard(items);
+  if(category==='Vocabulary')return `<section class="card topic-card"><img class="tile-icon" src="${tileIcon.Vocabulary}" alt=""><div><h3>Vocabulary <span class="badge">Próximamente</span></h3><p class="subtitle">${items.map(k=>escapeHTML(k.name)).join(' · ')}</p><p class="fineprint">Estamos preparando las lecciones interactivas de vocabulario.</p></div><span class="card-chevron">${icon('assets/icons/ui/chevron-right.svg','chevron')}</span></section>`;
   const done=items.filter(x=>isLearned(x.id)).length;
   return `<section class="card topic-card"><img class="tile-icon" src="${tileIcon[category]}" alt=""><div><h3>${category}<span class="topic-meta">${done}/${items.length}</span></h3><div class="mini-list">${items.map(k=>{
     const prevDifficulty=!isLearned(k.id)&&allDifficultyCount(k.id)>0;
@@ -650,7 +806,7 @@ function resetAlera(){ if(!confirm('¿Borrar perfil, progreso, sesiones y revisi
 function toast(msg){ const root=document.getElementById('toast-root');root.innerHTML=`<div class="toast">${escapeHTML(msg)}</div>`;setTimeout(()=>{root.innerHTML='';},2800); }
 
 // Global UI actions
-window.setView=v=>{ui.view=v;ui.modal=null;render();window.scrollTo(0,0);};
+window.setView=v=>{ui.view=v;ui.grammarId=null;ui.reviewId=null;ui.modal=null;render();window.scrollTo(0,0);};
 window.setWeek=n=>{ui.week=clamp(Number(n),1,19);render();window.scrollTo(0,0);};
 window.setReviewFilter=f=>{ui.reviewFilter=f;render();};
 window.setKnowledgeFilter=f=>{ui.knowledgeFilter=f;render();};
@@ -658,12 +814,13 @@ window.setKnowledgeQuery=v=>{ui.knowledgeQuery=v; const pos=document.activeEleme
 window.setProgressRange=r=>{ui.progressRange=r;render();};
 window.openPractice=(skill,week)=>{ui.modal={type:'practice',skill,week:Number(week)||currentPlanWeek(),step:1};ui.practiceDraft=null;renderModal();};
 window.openReview=(id,kind)=>{ui.modal={type:'review',id,kind};renderModal();};
-window.openKnowledge=id=>{ui.modal={type:'knowledge',id};renderModal();};
-window.openWeekCategory=(category,week)=>{ui.modal={type:'weekCategory',category,week:Number(week)};renderModal();};
+window.openKnowledge=id=>{if(knowledgeById[id]?.category==='Grammar'){ui.week=knowledgeById[id].week;openGrammarHome();return;}ui.modal={type:'knowledge',id};renderModal();};
+window.openWeekCategory=(category,week)=>{if(category==='Grammar'){ui.week=Number(week);openGrammarHome();return;}ui.modal={type:'weekCategory',category,week:Number(week)};renderModal();};
 window.openProfile=()=>{ui.modal={type:'profile'};renderModal();};
 window.openLanguageInfo=()=>{ui.modal={type:'language'};renderModal();};
 window.closeModal=()=>{ui.modal=null;ui.practiceDraft=null;renderModal();};
 window.markKnowledge=(id,keepModal=false)=>{
+  if(knowledgeById[id]?.category==='Grammar'){ui.week=knowledgeById[id].week;openGrammarHome();return;}
   if(isLearned(id)){
     getKState(id).learnedAt=null;
     store.reviewEvents=store.reviewEvents.filter(e=>e.knowledgeId!==id);
@@ -679,6 +836,14 @@ window.markKnowledge=(id,keepModal=false)=>{
   toast(`${knowledgeById[id].name} · empieza su curva de revisión`);
 };
 window.refreshAlera=refreshAlera;
+window.openGrammarHome=openGrammarHome;
+window.openGrammarUnit=openGrammarUnit;
+window.openGrammarReview=openGrammarReview;
+window.grammarSetStep=grammarSetStep;
+window.grammarSubmitChoice=grammarSubmitChoice;
+window.grammarShowAnswer=grammarShowAnswer;
+window.grammarSaveWriting=grammarSaveWriting;
+window.grammarCompleteUnit=grammarCompleteUnit;
 window.toggleReadingMode=toggleReadingMode;window.toggleDifficulty=toggleDifficulty;window.practiceNext=practiceNext;window.practiceBack=practiceBack;window.savePractice=savePractice;window.setSeverity=setSeverity;window.completeReview=completeReview;window.saveProfile=saveProfile;window.exportData=exportData;window.resetAlera=resetAlera;
 window.installApp=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;ui.modal=null;render();};
 
