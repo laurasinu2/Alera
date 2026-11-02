@@ -112,3 +112,12 @@ La interfaz usa ahora el azul del botón de acceso (#2F84D8 → #1A65C8) y una g
 - El avance semanal comprueba, al pasar cada lunes, que se haya completado al menos una unidad durante la semana anterior y que no queden unidades sin terminar de semanas más antiguas. En caso contrario, repite el bloque. Las unidades incompletas se arrastran al siguiente.
 - El contenido de Grammar de la semana 4 en adelante se mostrará como «Próximamente» hasta recibir el guion. Vocabulary muestra «Próximamente» sin alterar el resto del temario planificado.
 - El contenido se carga como archivo estático y entra en la caché offline de la PWA. Se mantiene la clave de progreso anterior `alera_pwa_v1` y la importación/exportación JSON.
+
+## Teoría interactiva de Grammar (noviembre 2026)
+
+- Las explicaciones originales del guion se muestran por secciones cortas en vez de un único texto largo. Cada unidad tiene un contador de pasos y barra de progreso.
+- El archivo `grammar-checks.js` incluye 69 preguntas de comprensión redactadas a partir del temario: dos de verdadero/falso y una de elección por cada una de las 23 unidades y apéndices de las semanas 1–3.
+- Las preguntas aparecen intercaladas en la teoría. Al elegir una respuesta se muestra la explicación; al responder incorrectamente se permite probar otra opción. No se avanza de página hasta responder a las preguntas del bloque.
+- En otras secciones puede escribirse opcionalmente un ejemplo propio. Tanto los ejemplos como las respuestas y la última pantalla visitada se guardan dentro de `store.units` en el almacenamiento local existente.
+- Los ejercicios finales, actividades de escritura, repasos espaciados y avance semanal siguen funcionando. Vocabulary permanece «Próximamente».
+- Los contenidos teóricos, cuestionarios y archivos de interfaz se guardan en el Service Worker para funcionamiento sin conexión; la caché se renueva en la actualización.
