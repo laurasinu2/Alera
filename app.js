@@ -400,29 +400,113 @@ function renderGrammarActivity(unit,step){
     </section>`;
  }).join('');
 }
+
+function grammarTheoryPages(unit){
+ const raw=unit.steps?.[0]?.text||'';
+ const chapters=raw.split(/(?=^## )/m).map(x=>x.trim()).filter(Boolean);
+ if(chapters.length>1 && !chapters[0].startsWith('## ')){
+   chapters[1]=chapters[0]+'\n\n'+chapters[1];
+   chapters.shift();
+ }
+ return chapters.length?chapters:[raw];
+}
+function grammarTheoryChecksForPage(unit,page){
+ const all=GRAMMAR.theoryChecks?.[unit.id]||[];
+ const pages=grammarTheoryPages(unit).length;
+ return all.map((check,index)=>({...check,index})).filter(c=>{
+   const target=Math.min(pages-1,Math.max(0,Math.floor(((c.index+1)*pages)/all.length)-1));
+   return target===page;
+ });
+}
+function grammarTheoryAnswered(state,index){
+ return Object.prototype.hasOwnProperty.call(state.theoryAnswers||{},String(index));
+}
+function renderGrammarTheory(unit,page,state){
+ const checks=grammarTheoryChecksForPage(unit,page),pages=grammarTheoryPages(unit);
+ const answered=checks.filter(check=>grammarTheoryAnswered(state,check.index)).length;
+ return `<div class="grammar-theory">
+  <div class="grammar-theory-subhead"><span class="grammar-theory-tag">Aprende paso a paso</span><span>${page+1}/${pages.length} conceptos</span></div>
+  <div class="grammar-reading">${grammarMarkdown(pages[page])}</div>
+  ${checks.map(check=>{
+    const chosen=state.theoryAnswers?.[check.index];
+    const answered=grammarTheoryAnswered(state,check.index);
+    const correct=check.kind==='tf'?String(check.answer)===chosen:String(check.answer)===chosen;
+    const options=check.kind==='tf'?[{value:'true',label:'Verdadero'},{value:'false',label:'Falso'}]:(check.options||[]).map((label,i)=>({value:String(i),label}));
+    return `<section class="grammar-mini-quiz" role="group" aria-label="Comprueba lo aprendido">
+     <span class="grammar-mini-tag">¿Lo has entendido?</span>
+     <h3>${escapeHTML(check.question)}</h3>
+     <div class="grammar-mini-options">${options.map(option=>{
+       const selected=chosen===option.value;
+       return `<button type="button" class="grammar-mini-option ${selected?(correct?'grammar-mini-correct':'grammar-mini-incorrect'):''}" aria-pressed="${selected?'true':'false'}" onclick="grammarSubmitTheoryCheck('${unit.id}',${check.index},'${option.value}')">${escapeHTML(option.label)}${selected?` <span aria-hidden="true">${correct?'✓':'✕'}</span>`:''}</button>`;
+     }).join('')}</div>
+     ${answered?`<div class="grammar-mini-feedback ${correct?'grammar-mini-success':'grammar-mini-retry'}" role="status"><strong>${correct?'¡Bien hecho!':'Revisa esta idea'}</strong><p>${escapeHTML(check.feedback)}</p>${!correct?'<small>Puedes elegir otra respuesta antes de continuar.</small>':''}</div>`:''}
+    </section>`;
+  }).join('')}
+  ${!checks.length?`<details class="grammar-practice-prompt"><summary>✍️ Prueba con tu propio ejemplo (opcional)</summary>
+    <p>Escribe una frase aplicando lo que acabas de aprender.</p>
+    <textarea class="grammar-answer-input" aria-label="Tu ejemplo" placeholder="Escribe un ejemplo en inglés…" oninput="grammarSaveTheoryNote('${unit.id}',${page},this.value)">${escapeHTML(state.theoryNotes?.[page]||'')}</textarea></details>`:''}
+  ${checks.length&&answered!==checks.length?'<p class="grammar-mini-help">Responde para continuar con la lección.</p>':''}
+ </div>`;
+}
+function grammarSubmitTheoryCheck(id,index,value){
+ const unit=GRAMMAR.units.find(u=>u.id===id),check=GRAMMAR.theoryChecks?.[id]?.[index];
+ if(!unit||!check||ui.grammarId!==id)return;
+ const valid=check.kind==='tf'?['true','false'].includes(value):(Number.isInteger(Number(value))&&Number(value)>=0&&Number(value)<check.options.length);
+ if(!valid)return;
+ const state=unitState(id);
+ if(!state.theoryAnswers)state.theoryAnswers={};
+ state.theoryAnswers[index]=value;
+ saveStore();
+ render();
+}
+function grammarSaveTheoryNote(id,page,value){
+ const st=unitState(id);
+ if(!st.theoryNotes)st.theoryNotes={};
+ st.theoryNotes[page]=value;
+ saveStore();
+}
 function renderGrammarLesson(){
  const unit=GRAMMAR.units.find(u=>u.id===ui.grammarId);if(!unit)return renderGrammarSyllabus();
  const st=unitState(unit.id),step=clamp(Number(st.step||0),0,unit.steps.length-1),item=unit.steps[step];
- const progress=Math.round((step+1)/unit.steps.length*100);
+ const theory=grammarTheoryPages(unit),page=clamp(Number(st.theoryPage||0),0,theory.length-1);
+ const current=step===0?page+1:theory.length+step,total=theory.length+unit.steps.length-1;
+ const progress=Math.round(current/total*100);
+ const checks=step===0?grammarTheoryChecksForPage(unit,page):[];
+ const requiresAnswer=step===0&&!unitCompleted(unit.id)&&checks.some(c=>!grammarTheoryAnswered(st,c.index));
+ const isLast=step===unit.steps.length-1;
  return `<div class="grammar-layout"><button class="grammar-back" onclick="openGrammarHome()">‹ Todas las unidades</button>
-    <div class="grammar-lesson-top"><span>${escapeHTML(unit.code)} · ${escapeHTML(knowledgeById[unit.group]?.name||'Grammar')}</span><span>${step+1}/${unit.steps.length}</span></div>
-    <div class="grammar-overall-progress"><i style="width:${progress}%"></i></div>
+    <div class="grammar-lesson-top"><span>${escapeHTML(unit.code)} · ${escapeHTML(knowledgeById[unit.group]?.name||'Grammar')}</span><span>Paso ${current} de ${total}</span></div>
+    <div class="grammar-overall-progress" role="progressbar" aria-label="Progreso de la lección" aria-valuenow="${current}" aria-valuemin="0" aria-valuemax="${total}"><i style="width:${progress}%"></i></div>
     <h1 class="grammar-lesson-name">${escapeHTML(unit.title)}</h1>
     ${unitCompleted(unit.id)?'<div class="grammar-completed-notice">✓ Unidad completada. Puedes repasar su contenido cuando quieras.</div>':''}
-    <section class="grammar-lesson-body card"><h2>${escapeHTML(item.title)}</h2>
-      ${item.type==='theory'?`<div class="grammar-reading">${grammarMarkdown(item.text)}</div>`:
-      item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. También puedes escribirlo en papel.</p><label class="grammar-handwriting-check"><input type="checkbox" ${st.handwritten?.[step]?"checked":""} onchange="grammarMarkHandwritten(\'${unit.id}\',${step},this.checked)"> He completado esta actividad en papel</label><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
-      renderGrammarActivity(unit,step)}
-    </section>
-    <div class="grammar-lesson-actions"><button class="secondary-btn" onclick="grammarSetStep(-1)" ${step===0?'disabled':''}>‹ Anterior</button>
-     ${step===unit.steps.length-1?`<button class="primary-btn" onclick="grammarCompleteUnit()">${unitCompleted(unit.id)?'Volver a unidades':'✓ Completar unidad'}</button>`:`<button class="primary-btn" onclick="grammarSetStep(1)">Continuar →</button>`}</div>
-    <p class="fineprint">Progreso guardado en este dispositivo. Las revisiones se programan desde la fecha de finalización.</p></div>`;
+    <section class="grammar-lesson-body card">
+      ${item.type==='theory'?renderGrammarTheory(unit,page,st):
+      `<h2>${escapeHTML(item.title)}</h2>${
+       item.type==='writing'?`<div class="grammar-reading">${grammarMarkdown(item.text.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/,''))}</div><textarea class="grammar-writing" placeholder="Escribe aquí tu ejercicio…" oninput="grammarSaveWriting('${unit.id}',${step},0,this.value)">${escapeHTML(st.writing?.[grammarAnswerKey(unit.id,step,0)]||'')}</textarea><p class="fineprint">Tu texto se guarda automáticamente. También puedes escribirlo en papel.</p><label class="grammar-handwriting-check"><input type="checkbox" ${st.handwritten?.[step]?'checked':''} onchange="grammarMarkHandwritten('${unit.id}',${step},this.checked)"> He completado esta actividad en papel</label><button class="grammar-solution-toggle" onclick="grammarShowAnswer('${unit.id}',${step},0)">${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?'Ocultar respuesta modelo':'Ver respuesta modelo'}</button>${st.revealed?.[grammarAnswerKey(unit.id,step,0)]?`<div class="grammar-solution">${grammarMarkdown((item.text.match(/\*\*Respuesta(?: posible| preferible| modelo)?:[\s\S]*/)||[])[0]?.replace(/\*\*Respuesta(?: posible| preferible| modelo)?:\s*\*\*/,'').trim()||'')}</div>`:''}`:
+       renderGrammarActivity(unit,step)}`}</section>
+    <div class="grammar-lesson-actions"><button class="secondary-btn" onclick="grammarSetStep(-1)" ${step===0&&page===0?'disabled':''}>‹ Anterior</button>
+     ${isLast?`<button class="primary-btn" onclick="grammarCompleteUnit()">${unitCompleted(unit.id)?'Volver a unidades':'✓ Completar unidad'}</button>`:`<button class="primary-btn" onclick="grammarSetStep(1)" ${requiresAnswer?'disabled aria-disabled="true"':''}>Continuar →</button>`}</div>
+    <p class="fineprint">${step===0?'Una idea cada vez. Responde las preguntas para comprobar lo aprendido.':'Tus respuestas se guardan en este dispositivo.'} Las revisiones se programan desde la fecha de finalización.</p></div>`;
 }
 function grammarSetStep(delta){
- const u=GRAMMAR.units.find(x=>x.id===ui.grammarId);if(!u)return;
- const st=unitState(u.id);st.step=clamp(Number(st.step||0)+delta,0,u.steps.length-1);
+ const unit=GRAMMAR.units.find(u=>u.id===ui.grammarId);if(!unit)return;
+ const st=unitState(unit.id),step=clamp(Number(st.step||0),0,unit.steps.length-1),pages=grammarTheoryPages(unit);
+ let page=clamp(Number(st.theoryPage||0),0,pages.length-1);
+ if(delta>0&&step===0){
+   const questions=grammarTheoryChecksForPage(unit,page);
+   if(!unitCompleted(unit.id)&&questions.some(c=>!grammarTheoryAnswered(st,c.index))){toast('Responde primero la comprobación de la teoría');return;}
+   if(page<pages.length-1)st.theoryPage=page+1;
+   else st.step=1;
+ }else if(delta<0&&step===0){
+   st.theoryPage=Math.max(0,page-1);
+ }else if(delta<0&&step===1){
+   st.step=0;st.theoryPage=pages.length-1;
+ }else{
+   st.step=clamp(step+delta,0,unit.steps.length-1);
+ }
  saveStore();render();window.scrollTo(0,0);
 }
+
 function grammarSubmitChoice(id,step,n,letter){
  const u=GRAMMAR.units.find(x=>x.id===id);if(!u)return;
  const st=unitState(id),key=grammarAnswerKey(id,step,n);st.answers[key]=letter;
@@ -889,6 +973,8 @@ window.openGrammarUnit=openGrammarUnit;
 window.openGrammarReview=openGrammarReview;
 window.grammarSetStep=grammarSetStep;
 window.grammarSubmitChoice=grammarSubmitChoice;
+window.grammarSubmitTheoryCheck=grammarSubmitTheoryCheck;
+window.grammarSaveTheoryNote=grammarSaveTheoryNote;
 window.grammarShowAnswer=grammarShowAnswer;
 window.grammarSaveWriting=grammarSaveWriting;
 window.grammarMarkHandwritten=grammarMarkHandwritten;
