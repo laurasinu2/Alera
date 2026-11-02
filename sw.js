@@ -1,4 +1,4 @@
-const CACHE = 'alera-v11-grammar-lessons';
+const CACHE = 'alera-v12-grammar-course';
 const CORE = [
   "./README.md",
   "./app.js",
